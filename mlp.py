@@ -5,7 +5,6 @@ from jax.random import normal, split, PRNGKey
 # typing
 from jax import Array
 from typing import Callable
-from functools import partial
 
 
 Params = list[tuple[Array, Array]]
