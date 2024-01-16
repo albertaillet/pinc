@@ -52,32 +52,35 @@ def mlp_forward(params: Params, x: Array, activation: Callable, skip_layers: lis
 
 
 def get_variables(params: Params, x: Array, activation: Callable, F: Callable, skip_layers: list[int]) -> tuple[Array, ...]:
-    
     def forward_and_aux(x: Array):
         out = mlp_forward(params, x, activation, skip_layers)
         sdf, phi, phi_tilde = out[0], out[1:4], out[4:7]
         G_tilde = phi_tilde / np.maximum(1, np.linalg.norm(phi_tilde))
         return (sdf, phi, G_tilde), (sdf, phi_tilde, G_tilde)
-    
+
     # shapes: grad_sdf(3,)  jac_phi(3, 3)  jac_G_tilde(3, 3)
     (grad_sdf, jac_phi, jac_G_tilde), (sdf, phi_tilde, G_tilde) = jacfwd(forward_and_aux, has_aux=True)(x)
 
     # calculate curl of phi using the jacobian
-    curl_phi = np.array([
-        jac_phi[2, 1] - jac_phi[1, 2],
-        jac_phi[0, 2] - jac_phi[2, 0],
-        jac_phi[1, 0] - jac_phi[0, 1],
-    ])
+    curl_phi = np.array(
+        [
+            jac_phi[2, 1] - jac_phi[1, 2],
+            jac_phi[0, 2] - jac_phi[2, 0],
+            jac_phi[1, 0] - jac_phi[0, 1],
+        ]
+    )
     curl_phi_minus_F = curl_phi - F(x)
     G = curl_phi_minus_F / (np.linalg.norm(curl_phi_minus_F) + 1e-6)  # when p approaches inf
 
     # calculate curl of G_tilde using the jacobian
-    curl_G_tilde = np.array([
-        jac_G_tilde[2, 1] - jac_G_tilde[1, 2],
-        jac_G_tilde[0, 2] - jac_G_tilde[2, 0],
-        jac_G_tilde[1, 0] - jac_G_tilde[0, 1],
-    ])
-    
+    curl_G_tilde = np.array(
+        [
+            jac_G_tilde[2, 1] - jac_G_tilde[1, 2],
+            jac_G_tilde[0, 2] - jac_G_tilde[2, 0],
+            jac_G_tilde[1, 0] - jac_G_tilde[0, 1],
+        ]
+    )
+
     return sdf, grad_sdf, G, G_tilde, curl_G_tilde
 
 
@@ -85,19 +88,21 @@ def delta_e(x: Array, epsilon: float):
     return 1 - np.tanh(x / epsilon) ** 2
 
 
-def compute_loss(params: Params, x: Array, activation: Callable, F: Callable, skip_layers: list[int]) -> Array:
-    epsilon = 0.1
+def compute_loss(
+    params: Params, x: Array, activation: Callable, F: Callable, skip_layers: list[int], loss_weights: Array, epsilon: float = 0.1
+) -> Array:
 
     sdf, grad_sdf, G, G_tilde, curl_G_tilde = get_variables(params, x, activation, F, skip_layers)
-
-    loss_sdf = np.abs(sdf)
-    loss_grad = np.square(grad_sdf - G).sum()
-    loss_curl = np.square(G - G_tilde).sum()
-    loss_curl_tilde = np.square(curl_G_tilde).sum()
-    loss_area = delta_e(sdf, epsilon) * np.linalg.norm(grad_sdf)
-
-    # TODO: add hyperparameters to weight the loss terms
-    loss = loss_sdf + loss_grad + loss_curl + loss_curl_tilde + loss_area
+    loss = np.array(
+        [
+            np.abs(sdf),  # loss function for sdf
+            np.square(grad_sdf - G).sum(),  # loss function for grad
+            np.square(G - G_tilde).sum(),  # loss function for G
+            np.square(curl_G_tilde).sum(),  # loss function for curl
+            delta_e(sdf, epsilon) * np.linalg.norm(grad_sdf),  # loss function for area
+        ]
+    )
+    loss @= loss_weights
     return loss
 
 
@@ -105,11 +110,12 @@ if __name__ == "__main__":
     layer_sizes = [3] + [512] * 7 + [7]
     skip_layers = [4]
     params = init_mlp_params(layer_sizes, key=PRNGKey(0), skip_layers=skip_layers)
+    loss_weights = np.array([1, 0.1, 0.0001, 0.0005, 0.1])
     x = np.arange(3, dtype=np.float32)
     # out = mlp_forward(params, x, activation=nn.relu, skip_layers=skip_layers)
     # assert out.shape == (7,)
     F = lambda x: x / 3
     # vars = get_variables(params, x, activation=nn.relu, F=F, skip_layers=skip_layers)
     # print(vars)
-    loss = compute_loss(params, x, activation=nn.relu, F=F, skip_layers=skip_layers)
+    loss = compute_loss(params, x, activation=nn.relu, F=F, skip_layers=skip_layers, loss_weights=loss_weights)
     print(loss)
