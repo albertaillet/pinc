@@ -18,6 +18,8 @@ def init_layer_params(layer: int, in_dim: int, out_dim: int, key: Array, n_layer
     # https://github.com/matanatz/SAL/blob/master/code/model/network.py#L112
     # PINC implementation:
     # https://github.com/Yebbi/PINC/blob/main/model/network.py#L46
+    # IGR implementation:
+    # https://github.com/amosgropp/IGR/blob/master/code/model/network.py#L48
     if layer == n_layers - 2:
         # Inconsitency between SAL and PINC (factor of 2) and p in denominator
         # in SAL: 2*sqrt(pi) / sqrt(in_dim*p)
