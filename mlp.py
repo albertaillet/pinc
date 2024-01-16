@@ -1,5 +1,5 @@
 from math import sqrt, pi
-from jax import numpy as np, nn
+from jax import numpy as np, nn, jacfwd
 from jax.random import normal, split, PRNGKey
 
 # typing
@@ -24,7 +24,7 @@ def init_layer_params(layer: int, in_dim: int, out_dim: int, key: Array, n_layer
         # Inconsitency between SAL and PINC (factor of 2) and p in denominator
         # in SAL: 2*sqrt(pi) / sqrt(in_dim*p)
         # in PINC:  sqrt(pi) / sqrt(in_dim)
-        return create_params(w_mean=sqrt(pi) / sqrt(in_dim), w_std=0.00001, b_const=-0.1)
+        return create_params(w_mean=sqrt(pi) / sqrt(in_dim), w_std=1e-5, b_const=-0.1)
     else:
         return create_params(w_mean=0.0, w_std=sqrt(2) / sqrt(in_dim), b_const=0.0)
 
@@ -51,10 +51,36 @@ def mlp_forward(params: Params, x: Array, activation: Callable, skip_layers: lis
     return w @ x + b
 
 
+def get_variables(params: Params, x: Array, activation: Callable, F: Callable, skip_layers: list[int]) -> tuple[Array, Array, Array]:
+    
+    def phi_and_aux(x: Array) -> Array:
+        out = mlp_forward(params, x, activation, skip_layers)
+        sdf, phi, phi_tilde = out[0], out[1:4], out[4:7]
+        return phi, (sdf, phi_tilde)
+    
+    jac_phi, (sdf, phi_tilde) = jacfwd(phi_and_aux, has_aux=True)(x)
+
+    # calculate curl of phi using the jacobian
+    curl_phi = np.array([
+        jac_phi[2, 1] - jac_phi[1, 2],
+        jac_phi[0, 2] - jac_phi[2, 0],
+        jac_phi[1, 0] - jac_phi[0, 1],
+    ])
+    curl_phi_minus_F = curl_phi - F(x)
+    G = curl_phi_minus_F / (np.linalg.norm(curl_phi_minus_F) + 1e-6)  # when p approaches inf
+    
+    G_tilde = phi_tilde / np.maximum(1, np.linalg.norm(phi_tilde))
+    
+    return sdf, G, G_tilde
+
+
 if __name__ == "__main__":
     layer_sizes = [3] + [512] * 7 + [7]
     skip_layers = [4]
     params = init_mlp_params(layer_sizes, key=PRNGKey(0), skip_layers=skip_layers)
-    x = np.ones(3)
-    out = mlp_forward(params, x, activation=nn.relu, skip_layers=skip_layers)
-    print(out.shape)
+    x = np.arange(3, dtype=np.float32)
+    # out = mlp_forward(params, x, activation=nn.relu, skip_layers=skip_layers)
+    # assert out.shape == (7,)
+    F = lambda x: x / 3
+    vars = get_variables(params, x, activation=nn.relu, F=F, skip_layers=skip_layers)
+    print(vars)
