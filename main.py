@@ -3,20 +3,36 @@ import numpy as np
 import open3d as o3d
 from pathlib import Path
 from plotly import graph_objects as go
+from functools import partial
 from skimage.measure import marching_cubes
+from typing import Callable
 
 
-repo_dir = Path(__file__).resolve().parent
-data_dir = repo_dir / "data"
-scans_dir = data_dir / "scans"
-scan = o3d.io.read_point_cloud(str(scans_dir / "gargoyle.ply"))
+def process_point_cloud(point_cloud: o3d.geometry.PointCloud) -> tuple[np.ndarray, float, np.ndarray]:
+    points = np.asarray(point_cloud.points).astype(np.float32)
+    center_point = np.mean(points, axis=0)
+    points = points - center_point
+    max_coord = np.abs(points).max()
+    points = points / max_coord
+    assert points.shape[1] == 3
+    return points, max_coord, center_point
 
-# %%
-points_array = np.asarray(scan.points)
-print(points_array.shape)  # (95435, 3)
+
+def sdf_sphere(points: np.ndarray, radius: float) -> np.ndarray:
+    return np.linalg.norm(points, axis=1) - radius
 
 
-# %%
+def mesh_from_sdf(f: Callable, max_pts: float, center: np.ndarray, resolution: int) -> tuple[np.ndarray, np.ndarray]:
+    x = np.linspace(-max_pts, max_pts, resolution)
+    y = np.linspace(-max_pts, max_pts, resolution)
+    z = np.linspace(-max_pts, max_pts, resolution)
+    points = np.stack(np.meshgrid(x, y, z), axis=-1).reshape(-1, 3)
+    points = points + center
+    values = f(points)
+    verts, faces, _, _ = marching_cubes(values.reshape(resolution, resolution, resolution), 0)
+    return verts, faces
+
+
 def figure(trace, title) -> go.Figure:
     return go.Figure(
         data=[trace],
@@ -38,16 +54,12 @@ def plot_points(points, title="") -> go.Figure:
             y=points[:, 1],
             z=points[:, 2],
             mode="markers",
-            marker=dict(size=1, opacity=0.8),
+            marker=dict(size=1, opacity=1, colorscale="Viridis", color=points[:, 2]),
         ),
         title,
     )
 
 
-plot_points(points_array, title="Gargoyle").show()
-
-
-# %%
 def plot_mesh(points, triangles, title="") -> go.Figure:
     return figure(
         go.Mesh3d(
@@ -61,3 +73,21 @@ def plot_mesh(points, triangles, title="") -> go.Figure:
         ),
         title,
     )
+
+
+# %%
+repo_dir = Path(__file__).resolve().parent
+data_dir = repo_dir / "data"
+scans_dir = data_dir / "scans"
+scan = o3d.io.read_point_cloud(str(scans_dir / "gargoyle.ply"))
+points_array = np.asarray(scan.points)  # (95435, 3)
+point_set, max_pts, center = process_point_cloud(scan)
+plot_points(point_set, title="Gargoyle").show()
+
+
+# %%
+f = partial(sdf_sphere, radius=0.5)
+verts, faces = mesh_from_sdf(f, 1, np.zeros(3), resolution=100)
+plot_mesh(verts, faces, title="Sphere").show()
+
+# %%
