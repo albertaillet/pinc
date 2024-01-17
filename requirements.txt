@@ -1,6 +1,0 @@
-jax==0.4.23
-jaxlib==0.4.23
-optax==0.1.8
-scikit-image==0.22.0
-trimesh==4.0.9
-open3d==0.18.0
