@@ -1,6 +1,6 @@
 from math import sqrt, pi
 from jax import numpy as np, nn, jacfwd
-from jax.random import normal, split, PRNGKey
+from jax.random import normal, split, KeyArray, PRNGKey
 
 # typing
 from jax import Array
@@ -10,7 +10,7 @@ from typing import Callable
 Params = list[tuple[Array, Array]]
 
 
-def init_layer_params(layer: int, in_dim: int, out_dim: int, key: Array, n_layers: int) -> tuple[Array, Array]:
+def init_layer_params(layer: int, in_dim: int, out_dim: int, key: KeyArray, n_layers: int) -> tuple[Array, Array]:
     def create_params(w_mean: float, w_std: float, b_const: float) -> tuple[Array, Array]:
         return w_mean + w_std * normal(key, (out_dim, in_dim)), b_const * np.ones(out_dim)
 
@@ -29,7 +29,7 @@ def init_layer_params(layer: int, in_dim: int, out_dim: int, key: Array, n_layer
         return create_params(w_mean=0.0, w_std=sqrt(2) / sqrt(in_dim), b_const=0.0)
 
 
-def init_mlp_params(dims: list[int], key: Array, skip_layers: list[int]) -> Params:
+def init_mlp_params(dims: list[int], key: KeyArray, skip_layers: list[int]) -> Params:
     input_dim, n_layers = dims[0], len(dims)
     assert all(0 <= layer < n_layers for layer in skip_layers)
     in_dims = dims[:-1]
@@ -56,10 +56,10 @@ def get_variables(params: Params, x: Array, activation: Callable, F: Callable, s
         out = mlp_forward(params, x, activation, skip_layers)
         sdf, phi, phi_tilde = out[0], out[1:4], out[4:7]
         G_tilde = phi_tilde / np.maximum(1, np.linalg.norm(phi_tilde))
-        return (sdf, phi, G_tilde), (sdf, phi_tilde, G_tilde)
+        return (sdf, phi, G_tilde), (sdf, G_tilde)
 
     # shapes: grad_sdf(3,)  jac_phi(3, 3)  jac_G_tilde(3, 3)
-    (grad_sdf, jac_phi, jac_G_tilde), (sdf, phi_tilde, G_tilde) = jacfwd(forward_and_aux, has_aux=True)(x)
+    (grad_sdf, jac_phi, jac_G_tilde), (sdf, G_tilde) = jacfwd(forward_and_aux, has_aux=True)(x)
 
     # calculate curl of phi using the jacobian
     curl_phi = np.array(
@@ -91,7 +91,6 @@ def delta_e(x: Array, epsilon: float):
 def compute_loss(
     params: Params, x: Array, activation: Callable, F: Callable, skip_layers: list[int], loss_weights: Array, epsilon: float = 0.1
 ) -> Array:
-
     sdf, grad_sdf, G, G_tilde, curl_G_tilde = get_variables(params, x, activation, F, skip_layers)
     loss = np.array(
         [
