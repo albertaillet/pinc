@@ -1,9 +1,9 @@
+import optax
 import jax.numpy as np
 from jax.random import key, split, choice, normal
 from jax.lax import scan
 from jax import value_and_grad, Array, vmap
-from optax import adam, GradientTransformation, OptState, apply_updates, piecewise_constant_schedule
-from mlp import beta_softplus, init_mlp_params, compute_loss, Params
+from pinc.model import beta_softplus, init_mlp_params, compute_loss, Params
 from functools import partial
 
 
@@ -11,8 +11,8 @@ def step(
     params: Params,
     boundary_points: Array,
     sample_points,
-    opt_state: OptState,
-    optim: GradientTransformation,
+    opt_state: optax.OptState,
+    optim: optax.GradientTransformation,
     skip_layers: list[int],
     loss_weights: Array,
 ) -> tuple[Params, Array]:
@@ -30,7 +30,7 @@ def step(
 
     loss, grad = value_and_grad(batch_loss)(params, boundary_points, sample_points)
     updates, opt_state = optim.update(grad, opt_state)
-    params = apply_updates(params, updates)  # type: ignore
+    params = optax.apply_updates(params, updates)  # type: ignore
     return params, loss
 
 
@@ -65,7 +65,7 @@ def train(
     params: Params,
     data: Array,
     data_std: Array,
-    optim: GradientTransformation,
+    optim: optax.GradientTransformation,
     data_batch_size: int,
     global_batch_size: int,
     num_steps: int,
@@ -75,7 +75,7 @@ def train(
 ) -> tuple[Params, Array]:
     """Train the model"""
 
-    def scan_fn(carry: tuple[Params, OptState], key) -> tuple[tuple[Params, OptState], Array]:
+    def scan_fn(carry: tuple[Params, optax.OptState], key) -> tuple[tuple[Params, optax.OptState], Array]:
         params, opt_state = carry
         boundary_points, sample_points = get_batch(data, data_std, data_batch_size, global_batch_size, key)
         params, loss = step(params, boundary_points, sample_points, opt_state, optim, skip_layers, loss_weights)
@@ -92,9 +92,9 @@ if __name__ == "__main__":
     num_steps, data_batch_size, global_batch_size = 100, 10, 10
     params = init_mlp_params(layer_sizes, key=init_key, skip_layers=skip_layers)
     loss_weights = np.array([1, 0.1, 0.0001, 0.0005, 0.1])
-    optim = adam(piecewise_constant_schedule(1e-3, {2000 * i: 0.99 for i in range(1, num_steps // 2000 + 1)}))
-    F = lambda x: x / 3
-
+    optim = optax.adam(optax.piecewise_constant_schedule(1e-3, {2000 * i: 0.99 for i in range(1, num_steps // 2000 + 1)}))
+    F = lambda x: x / 3  # noqa: E731
+    
     data = normal(data_key, (100, 3))
     data = data / np.linalg.norm(data, axis=-1, keepdims=True)
     data_std = np.ones_like(data) * 0.1
