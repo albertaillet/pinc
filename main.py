@@ -22,6 +22,11 @@ def sdf_sphere(points: np.ndarray, radius: float) -> np.ndarray:
     return np.linalg.norm(points, axis=1) - radius
 
 
+def sdf_torus(points: np.ndarray, radius: float, tube_radius: float) -> float:
+    q = np.stack([np.linalg.norm(points[:, :2], axis=-1) - radius, points[:, 2]], axis=-1)
+    return np.linalg.norm(q, axis=-1) - tube_radius
+
+
 def mesh_from_sdf(f: Callable, max_pts: float, center: np.ndarray, resolution: int) -> tuple[np.ndarray, np.ndarray]:
     x = np.linspace(-max_pts, max_pts, resolution)
     y = np.linspace(-max_pts, max_pts, resolution)
@@ -86,7 +91,7 @@ plot_points(point_set, title="Gargoyle").show()
 
 
 # %%
-f = partial(sdf_sphere, radius=0.5)
+f = partial(sdf_torus, radius=0.2, tube_radius=0.1)
 verts, faces = mesh_from_sdf(f, 1, np.zeros(3), resolution=100)
 plot_mesh(verts, faces, title="Sphere").show()
 
