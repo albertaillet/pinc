@@ -18,3 +18,10 @@ dependencies = [
     "trimesh==4.0.9",
     "open3d==0.18.0"
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+include = ["pinc/*"]
