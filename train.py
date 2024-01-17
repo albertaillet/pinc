@@ -29,7 +29,7 @@ def sample_data(data: Array, batch_size: int, key: KeyArray) -> Array:
 
 
 def sample_points(points: Array, batch_size: int, key: KeyArray) -> Array:
-    """Get batch of data"""
+    """Get batch of points"""
     points = normal(key, shape=(batch_size,), dtype=np.int32)
     return points
 
@@ -60,11 +60,12 @@ if __name__ == "__main__":
     init_key, data_key = split(PRNGKey(0))
     layer_sizes = [3] + [512] * 7 + [7]
     skip_layers = [4]
+    num_steps, batch_size = 100, 10
     params = init_mlp_params(layer_sizes, key=init_key, skip_layers=skip_layers)
     loss_weights = np.array([1, 0.1, 0.0001, 0.0005, 0.1])
-    optim = adam(piecewise_constant_schedule(1e-3, {2000 * i: 0.99 for i in range(1, 10)}))
+    optim = adam(piecewise_constant_schedule(1e-3, {2000 * i: 0.99 for i in range(1, num_steps // 2000 + 1)}))
     F = lambda x: x / 3
     data = np.arange(100 * 3, dtype=np.float32).reshape(100, 3)
     params, loss = train(
-        params, data, optim, batch_size=10, num_steps=100, skip_layers=skip_layers, loss_weights=loss_weights, key=data_key
+        params, data, optim, batch_size, num_steps, skip_layers=skip_layers, loss_weights=loss_weights, key=data_key
     )
