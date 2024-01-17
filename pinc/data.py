@@ -1,9 +1,9 @@
 import numpy as np
-import open3d as o3d
+from pathlib import Path
+from plyfile import PlyData
 
 
-def process_point_cloud(point_cloud: o3d.geometry.PointCloud) -> tuple[np.ndarray, float, np.ndarray]:
-    points = np.asarray(point_cloud.points).astype(np.float32)
+def process_points(points: np.ndarray) -> tuple[np.ndarray, float, np.ndarray]:
     center_point = np.mean(points, axis=0)
     points = points - center_point
     max_coord = np.abs(points).max()
@@ -12,11 +12,18 @@ def process_point_cloud(point_cloud: o3d.geometry.PointCloud) -> tuple[np.ndarra
     return points, max_coord, center_point
 
 
-if __name__ == "__main__":
-    from pathlib import Path
+def load_ply(path: Path) -> np.ndarray:
+    assert path.suffix == ".ply"
+    with open(path, "rb") as f:
+        plydata = PlyData.read(f)
+    points = np.stack([plydata["vertex"][coord] for coord in "xyz"], axis=1)
+    return points
 
+
+if __name__ == "__main__":
     repo_root = Path(__file__).resolve().parent.parent
-    ply_file = repo_root / "data/scenes/gargoyle.ply"
-    point_cloud = o3d.io.read_point_cloud(str(ply_file))
-    points, max_coord, center_point = process_point_cloud(point_cloud)
+    ply_file = repo_root / "data/scans/gargoyle.ply"
+    point_cloud = load_ply(ply_file)
+
+    points, max_coord, center_point = process_points(point_cloud)
     print(points.shape, max_coord, center_point)
