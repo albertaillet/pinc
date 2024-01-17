@@ -1,10 +1,3 @@
-[tool.black]
-skip-string-normalization = true
-line-length = 130
-
-[tool.ruff]
-line-length = 130
-
 [project]
 name = "pinc"
 version = "0.0.0"
@@ -25,3 +18,10 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build]
 include = ["pinc/*"]
+
+[tool.black]
+skip-string-normalization = true
+line-length = 130
+
+[tool.ruff]
+line-length = 130
