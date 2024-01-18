@@ -94,7 +94,7 @@ if __name__ == "__main__":
     loss_weights = np.array([1, 0.1, 0.0001, 0.0005, 0.1])
     optim = optax.adam(optax.piecewise_constant_schedule(1e-3, {2000 * i: 0.99 for i in range(1, num_steps // 2000 + 1)}))
     F = lambda x: x / 3  # noqa: E731
-    
+
     data = normal(data_key, (100, 3))
     data = data / np.linalg.norm(data, axis=-1, keepdims=True)
     data_std = np.ones_like(data) * 0.1
