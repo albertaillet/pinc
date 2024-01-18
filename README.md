@@ -23,7 +23,7 @@ TODO: Find the data
 ## Notes
 =======
 ### Development
-Pre-commit hooks should be used to keep the codebase formatting consitent. After running installing the dependencies, run the following command to install the pre-commit hooks.
+Pre-commit hooks should be used to keep the codebase formatting consitent. After installing the dependencies, run the following command to install the pre-commit hooks.
 
 ```bash
 pre-commit install
