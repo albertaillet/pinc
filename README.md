@@ -19,5 +19,21 @@ We found in the README of [DiGS: Divergence guided shape implicit neural represe
 
 TODO: Find the data
 
+## Notes
 
+#### Mistake in 50th nearest neighbor calculation
 
+There is probably a mistake in the original code when it comes to the calucaltion of the 50th nearest neightbor.
+The following code from [line 250 to 258]() in `run.py` is used, but the `self.data` variable
+does not only contain the location data, but also the normal data. This is probably a minor mistake.
+
+```python
+sigma_set = []
+ptree = cKDTree(self.data)
+
+for p in np.array_split(self.data, 100, axis=0):
+    d = ptree.query(p, 50 + 1)
+    sigma_set.append(np.array(d[0][:, -1]))
+
+sigmas = np.concatenate(sigma_set)
+```
