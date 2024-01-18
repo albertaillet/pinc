@@ -19,7 +19,16 @@ We found in the README of [DiGS: Divergence guided shape implicit neural represe
 
 TODO: Find the data
 
+<<<<<<< HEAD
 ## Notes
+=======
+### Development
+Pre-commit hooks should be used to keep the codebase formatting consitent. After running installing the dependencies, run the following command to install the pre-commit hooks.
+
+```bash
+pre-commit install
+```
+>>>>>>> 1e05e3e (added precommit hooks)
 
 #### Mistake in 50th nearest neighbor calculation
 

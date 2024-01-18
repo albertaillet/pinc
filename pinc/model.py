@@ -1,10 +1,9 @@
-from math import sqrt, pi
-from jax import numpy as np, nn, jacfwd
-from jax.random import normal, split, key
+from collections.abc import Callable
+from math import pi, sqrt
 
 # typing
-from jax import Array
-from collections.abc import Callable
+from jax import Array, jacfwd, nn, numpy as np
+from jax.random import key, normal, split
 
 
 Params = list[tuple[Array, Array]]
@@ -120,7 +119,5 @@ if __name__ == "__main__":
     out = mlp_forward(params, x, activation=nn.relu, skip_layers=skip_layers)
     assert out.shape == (7,)
     F = lambda x: x / 3  # noqa: E731
-    # vars = get_variables(params, x, activation=nn.relu, F=F, skip_layers=skip_layers)
-    # print(vars)
     loss = compute_loss(params, x, activation=nn.relu, F=F, skip_layers=skip_layers, loss_weights=loss_weights)
     print(loss)
