@@ -24,15 +24,13 @@ include = ["pinc/*"]
 [tool.black]
 skip-string-normalization = true
 line-length = 130
+preview = true
 
 [tool.ruff]
-select = ["E", "F", "I", "W", "C90"]
+select = ["E", "F", "W", "C90"]
 line-length = 130
 ignore = ["E731"] # Allow named lambdas
-
-[tool.ruff.isort]
-lines-after-imports = 2
-order-by-type = false
+preview = true
 
 [tool.pyright]
 reportIncompatibleMethodOverride = true

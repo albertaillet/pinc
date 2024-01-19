@@ -1,5 +1,6 @@
-import numpy as np
 from pathlib import Path
+
+import numpy as np
 from plyfile import PlyData
 from scipy.spatial import cKDTree
 

@@ -1,12 +1,10 @@
-from functools import partial
-
-import jax.numpy as np
 import optax
-from jax import Array, value_and_grad, vmap
+import jax.numpy as np
+from jax.random import key, split, choice, normal
 from jax.lax import scan
-from jax.random import choice, key, normal, split
-
-from pinc.model import beta_softplus, compute_loss, init_mlp_params, Params
+from jax import value_and_grad, Array, vmap
+from pinc.model import beta_softplus, init_mlp_params, compute_loss, Params
+from functools import partial
 
 
 def step(
@@ -93,9 +91,9 @@ if __name__ == "__main__":
     skip_layers = [4]
     num_steps, data_batch_size, global_batch_size = 100, 10, 10
     params = init_mlp_params(layer_sizes, key=init_key, skip_layers=skip_layers)
-    loss_weights = np.array([1, 0.1, 0.0001, 0.0005, 0.1])
+    loss_weights = np.array([1, 0.1, 1e-4, 5e-4, 0.1])
     optim = optax.adam(optax.piecewise_constant_schedule(1e-3, {2000 * i: 0.99 for i in range(1, num_steps // 2000 + 1)}))
-    F = lambda x: x / 3  # noqa: E731
+    F = lambda x: x / 3
 
     data = normal(data_key, (100, 3))
     data = data / np.linalg.norm(data, axis=-1, keepdims=True)

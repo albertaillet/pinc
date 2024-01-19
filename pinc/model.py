@@ -1,10 +1,9 @@
-from collections.abc import Callable
-from math import pi, sqrt
+from jax import numpy as np, nn, jacfwd
+from jax.random import normal, split, key
 
 # typing
-from jax import Array, jacfwd, nn, numpy as np
-from jax.random import key, normal, split
-
+from jax import Array
+from collections.abc import Callable
 
 Params = list[tuple[Array, Array]]
 
@@ -14,7 +13,7 @@ def beta_softplus(x: Array, beta: float = 100.0) -> Array:
 
 
 def init_layer_params(in_dim: int, out_dim: int, key: Array, last_layer: bool) -> tuple[Array, Array]:
-    def create_params(w_mean: float, w_std: float, b_const: float) -> tuple[Array, Array]:
+    def create_params(w_mean: Array, w_std: Array, b_const: float) -> tuple[Array, Array]:
         return w_mean + w_std * normal(key, (out_dim, in_dim)), b_const * np.ones(out_dim)
 
     # Geometric initialization according to "SAL: Sign Agnostic Learning of Shapes From Raw Data"
@@ -27,8 +26,8 @@ def init_layer_params(in_dim: int, out_dim: int, key: Array, last_layer: bool) -
         # Inconsitency between SAL and PINC (factor of 2) and p in denominator
         # in SAL: 2*sqrt(pi) / sqrt(in_dim*p)
         # in PINC:  sqrt(pi) / sqrt(in_dim)
-        return create_params(w_mean=sqrt(pi) / sqrt(in_dim), w_std=1e-5, b_const=-0.1)
-    return create_params(w_mean=0.0, w_std=sqrt(2) / sqrt(in_dim), b_const=0.0)
+        return create_params(w_mean=np.sqrt(np.pi / in_dim), w_std=np.array(1e-5), b_const=-0.1)
+    return create_params(w_mean=np.array(0), w_std=np.sqrt(2 / in_dim), b_const=0.0)
 
 
 def init_mlp_params(dims: list[int], key: Array, skip_layers: list[int]) -> Params:
@@ -55,13 +54,11 @@ def mlp_forward(params: Params, x: Array, activation: Callable[[Array], Array], 
 
 
 def curl_from_jacobian(jacobian: Array) -> Array:
-    return np.array(
-        [
-            jacobian[2, 1] - jacobian[1, 2],
-            jacobian[0, 2] - jacobian[2, 0],
-            jacobian[1, 0] - jacobian[0, 1],
-        ]
-    )
+    return np.array([
+        jacobian[2, 1] - jacobian[1, 2],
+        jacobian[0, 2] - jacobian[2, 0],
+        jacobian[1, 0] - jacobian[0, 1],
+    ])
 
 
 def get_variables(params: Params, x: Array, activation: Callable, F: Callable, skip_layers: list[int]) -> tuple[Array, ...]:
@@ -98,15 +95,13 @@ def compute_loss(
     epsilon: float = 0.1,
 ) -> Array:
     sdf, grad_sdf, G, G_tilde, curl_G_tilde = get_variables(params, x, activation, F, skip_layers)
-    loss = np.array(
-        [
-            np.abs(sdf) * boundary,  # loss function for sdf
-            np.square(grad_sdf - G).sum(),  # loss function for grad
-            np.square(G - G_tilde).sum(),  # loss function for G
-            np.square(curl_G_tilde).sum(),  # loss function for curl
-            delta_e(sdf, epsilon) * np.linalg.norm(grad_sdf),  # loss function for area
-        ]
-    )
+    loss = np.array([
+        np.abs(sdf) * boundary,  # loss function for sdf
+        np.square(grad_sdf - G).sum(),  # loss function for grad
+        np.square(G - G_tilde).sum(),  # loss function for G
+        np.square(curl_G_tilde).sum(),  # loss function for curl
+        delta_e(sdf, epsilon) * np.linalg.norm(grad_sdf),  # loss function for area
+    ])
     return loss @ loss_weights
 
 
@@ -114,10 +109,10 @@ if __name__ == "__main__":
     layer_sizes = [3] + [512] * 7 + [7]
     skip_layers = [4]
     params = init_mlp_params(layer_sizes, key=key(0), skip_layers=skip_layers)
-    loss_weights = np.array([1, 0.1, 0.0001, 0.0005, 0.1])
+    loss_weights = np.array([1, 0.1, 1e-4, 1e-4, 0.1])
     x = np.arange(3, dtype=np.float32)
     out = mlp_forward(params, x, activation=nn.relu, skip_layers=skip_layers)
     assert out.shape == (7,)
-    F = lambda x: x / 3  # noqa: E731
+    F = lambda x: x / 3
     loss = compute_loss(params, x, activation=nn.relu, F=F, skip_layers=skip_layers, loss_weights=loss_weights)
     print(loss)
