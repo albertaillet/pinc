@@ -31,7 +31,6 @@ line-length = 130
 ignore = ["E731"] # Allow named lambdas
 
 [tool.ruff.isort]
-combine-as-imports = true
 lines-after-imports = 2
 order-by-type = false
 

@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.7
+    rev: v0.1.13
     hooks:
       - id: ruff  # linter
         types_or: [ python, pyi, jupyter ]
@@ -11,4 +11,4 @@ repos:
     rev: v1.1.344
     hooks:
     - id: pyright
-      additional_dependencies: ["jax", "jaxtyping", "optax", "open3d", "scikit-image", "plotly"]
+      additional_dependencies: ["jax", "optax", "open3d", "scikit-image", "plotly"]
