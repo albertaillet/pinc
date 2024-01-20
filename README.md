@@ -29,7 +29,7 @@ pre-commit install
 #### Mistake in 50th nearest neighbor calculation
 
 There is probably a mistake in the original code when it comes to the calucaltion of the 50th nearest neightbor.
-The following code from [line 250 to 258]() in `run.py` is used, but the `self.data` variable
+The following code from [line 251 to 258](https://github.com/Yebbi/PINC/blob/main/reconstruction/run.py#L251-L258) in `run.py` is used, but the `self.data` variable
 does not only contain the location data, but also the normal data. This is probably a minor mistake.
 
 ```python
@@ -41,4 +41,13 @@ for p in np.array_split(self.data, 100, axis=0):
     sigma_set.append(np.array(d[0][:, -1]))
 
 sigmas = np.concatenate(sigma_set)
+```
+
+#### Number of sampled global points
+
+The paper does not mention how many points are sampled outside the points cloud. This was found in the file
+`sample.py` on [line 33](https://github.com/Yebbi/PINC/blob/main/model/sample.py#L33) and is set to one eighth of the number of points sampled from the point cloud.
+
+```python
+sample_global = (torch.rand(batch_size, sample_size//8, dim, device=pc_input.device, requires_grad=True) * (self.global_sigma * 2)) - self.global_sigma
 ```

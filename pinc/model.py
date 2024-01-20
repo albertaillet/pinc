@@ -8,7 +8,7 @@ from collections.abc import Callable
 Params = list[tuple[Array, Array]]
 
 
-def beta_softplus(x: Array, beta: float = 100.0) -> Array:
+def beta_softplus(x: Array, beta: float) -> Array:
     return nn.softplus(x * beta) / beta
 
 

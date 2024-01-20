@@ -5,6 +5,7 @@ from jax.lax import scan
 from jax import value_and_grad, Array, vmap
 from pinc.model import beta_softplus, init_mlp_params, compute_loss, Params
 from functools import partial
+from typing import Callable
 
 
 def step(
@@ -13,18 +14,19 @@ def step(
     sample_points,
     opt_state: optax.OptState,
     optim: optax.GradientTransformation,
+    activation: Callable,
+    F: Callable,
     skip_layers: list[int],
     loss_weights: Array,
 ) -> tuple[Params, Array]:
     """Compute loss and update parameters"""
+    compute_loss_applied = partial(
+        compute_loss, params=params, activation=activation, F=F, skip_layers=skip_layers, loss_weights=loss_weights
+    )
 
     def batch_loss(params: Params, boundary_points: Array, sample_points: Array) -> Array:
-        F = lambda x: x / 3  # TODO: fix
-        gen_loss = partial(
-            compute_loss, params=params, activation=beta_softplus, F=F, skip_layers=skip_layers, loss_weights=loss_weights
-        )
-        boundary_loss = vmap(partial(gen_loss, boundary=True))
-        sample_loss = vmap(partial(gen_loss, boundary=False))
+        boundary_loss = vmap(partial(compute_loss_applied, params=params, boundary=True))
+        sample_loss = vmap(partial(compute_loss_applied, params=params, boundary=False))
         return boundary_loss(x=boundary_points).sum() + sample_loss(x=sample_points).sum() / (
             len(boundary_points) + len(sample_points)
         )
@@ -70,6 +72,8 @@ def train(
     data_batch_size: int,
     global_batch_size: int,
     num_steps: int,
+    activation: Callable,
+    F: Callable,
     skip_layers: list[int],
     loss_weights: Array,
     key: Array,
@@ -79,7 +83,17 @@ def train(
     def scan_fn(carry: tuple[Params, optax.OptState], key) -> tuple[tuple[Params, optax.OptState], Array]:
         params, opt_state = carry
         boundary_points, sample_points = get_batch(data, data_std, data_batch_size, global_batch_size, key)
-        params, loss = step(params, boundary_points, sample_points, opt_state, optim, skip_layers, loss_weights)
+        params, loss = step(
+            params=params,
+            boundary_points=boundary_points,
+            sample_points=sample_points,
+            opt_state=opt_state,
+            optim=optim,
+            activation=activation,
+            F=F,
+            skip_layers=skip_layers,
+            loss_weights=loss_weights,
+        )
         return (params, opt_state), loss
 
     (params, _), loss = scan(scan_fn, (params, optim.init(params)), split(key, num_steps))
@@ -101,6 +115,17 @@ if __name__ == "__main__":
     data_std = np.ones_like(data) * 0.1
 
     params, loss = train(
-        params, data, data_std, optim, data_batch_size, global_batch_size, num_steps, skip_layers, loss_weights, train_key
+        params=params,
+        data=data,
+        data_std=data_std,
+        optim=optim,
+        data_batch_size=data_batch_size,
+        global_batch_size=global_batch_size,
+        num_steps=num_steps,
+        activation=partial(beta_softplus, beta=100.0),
+        F=F,
+        skip_layers=skip_layers,
+        loss_weights=loss_weights,
+        key=train_key,
     )
     print(loss)
