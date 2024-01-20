@@ -1,8 +1,6 @@
 import optax
-import jax.numpy as np
 from jax.random import key, split, choice, normal
-from jax.lax import scan
-from jax import value_and_grad, Array, vmap
+from jax import numpy as jnp, value_and_grad, Array, vmap, lax
 from pinc.model import beta_softplus, init_mlp_params, compute_loss, Params, StaticLossArgs
 from functools import partial
 
@@ -55,7 +53,7 @@ def get_batch(data: Array, data_std: Array, data_batch_size: int, global_batch_s
     local_points = sample_local_points(boundary_points, std, data_batch_size, local_key)
     global_points = sample_global_points(global_batch_size, global_key)
 
-    return boundary_points, np.concatenate([local_points, global_points], axis=0)
+    return boundary_points, jnp.concatenate([local_points, global_points], axis=0)
 
 
 def train(
@@ -84,7 +82,7 @@ def train(
         )
         return (params, opt_state), loss
 
-    (params, _), loss = scan(scan_fn, (params, optim.init(params)), split(key, num_steps))
+    (params, _), loss = lax.scan(scan_fn, (params, optim.init(params)), split(key, num_steps))
     return params, loss
 
 
@@ -97,14 +95,14 @@ if __name__ == "__main__":
     optim = optax.adam(optax.piecewise_constant_schedule(1e-3, {2000 * i: 0.99 for i in range(1, num_steps // 2000 + 1)}))
 
     data = normal(data_key, (100, 3))
-    data = data / np.linalg.norm(data, axis=-1, keepdims=True)
-    data_std = np.ones_like(data) * 0.1
+    data = data / jnp.linalg.norm(data, axis=-1, keepdims=True)
+    data_std = jnp.ones_like(data) * 0.1
 
     static = StaticLossArgs(
         activation=partial(beta_softplus, beta=100.0),
         F=lambda x: x / 3,
         skip_layers=skip_layers,
-        loss_weights=np.array([1, 0.1, 1e-4, 5e-4, 0.1]),
+        loss_weights=jnp.array([1, 0.1, 1e-4, 5e-4, 0.1]),
         epsilon=0.1,
     )
 

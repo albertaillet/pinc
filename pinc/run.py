@@ -1,8 +1,7 @@
 import optax
 import argparse
-import jax.numpy as np
+from jax import numpy as jnp, nn
 from jax.random import key, split, normal
-from jax.nn import relu
 from pathlib import Path
 from functools import partial
 
@@ -40,11 +39,11 @@ def main(args: argparse.Namespace):
     print("Initializing...")
     repo_root = Path(__file__).resolve().parent.parent
     if args.data_filename in ["anchor", "daratech", "dc", "gargoyle", "lord_quas"]:
-        points = load_ply(repo_root / f"data/scans/{args.data_filename}.ply")
+        points, _ = load_ply(repo_root / f"data/scans/{args.data_filename}.ply")
         points, _, _ = process_points(points)
     elif args.data_filename == "sphere":
         points = normal(key(21), (1000, 3))
-        points = points / np.linalg.norm(points, axis=-1, keepdims=True)
+        points = points / jnp.linalg.norm(points, axis=-1, keepdims=True)
     else:
         raise ValueError(f"Unknown data filename: {args.data_filename}")
     data_std = get_sigma(points)
@@ -60,18 +59,18 @@ def main(args: argparse.Namespace):
     # softplus if defined for beta > 0 and approachs relu when beta approaches infinty
     # if beta < 0, then we set it to relu
     static = StaticLossArgs(
-        activation=partial(beta_softplus, beta=args.beta) if args.beta > 0 else relu,
+        activation=partial(beta_softplus, beta=args.beta) if args.beta > 0 else nn.relu,
         F=lambda x: x / 3,
         skip_layers=skip_layers,
-        loss_weights=np.array(args.loss_weights),
+        loss_weights=jnp.array(args.loss_weights),
         epsilon=args.epsilon,
     )
 
     print("Starting training...")
     params, loss = train(
         params=params,
-        data=np.array(points),
-        data_std=np.array(data_std),
+        data=jnp.array(points),
+        data_std=jnp.array(data_std),
         optim=optim,
         data_batch_size=args.data_batch_size,
         global_batch_size=args.global_batch_size,
