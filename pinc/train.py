@@ -3,9 +3,8 @@ import jax.numpy as np
 from jax.random import key, split, choice, normal
 from jax.lax import scan
 from jax import value_and_grad, Array, vmap
-from pinc.model import beta_softplus, init_mlp_params, compute_loss, Params
+from pinc.model import beta_softplus, init_mlp_params, compute_loss, Params, StaticLossArgs
 from functools import partial
-from typing import Callable
 
 
 def step(
@@ -14,19 +13,14 @@ def step(
     sample_points,
     opt_state: optax.OptState,
     optim: optax.GradientTransformation,
-    activation: Callable,
-    F: Callable,
-    skip_layers: list[int],
-    loss_weights: Array,
+    static: StaticLossArgs,
 ) -> tuple[Params, Array]:
     """Compute loss and update parameters"""
-    compute_loss_applied = partial(
-        compute_loss, params=params, activation=activation, F=F, skip_layers=skip_layers, loss_weights=loss_weights
-    )
+    compute_loss_with_static = partial(compute_loss, static=static)
 
     def batch_loss(params: Params, boundary_points: Array, sample_points: Array) -> Array:
-        boundary_loss = vmap(partial(compute_loss_applied, params=params, boundary=True))
-        sample_loss = vmap(partial(compute_loss_applied, params=params, boundary=False))
+        boundary_loss = vmap(partial(compute_loss_with_static, params=params, boundary=True))
+        sample_loss = vmap(partial(compute_loss_with_static, params=params, boundary=False))
         return boundary_loss(x=boundary_points).sum() + sample_loss(x=sample_points).sum() / (
             len(boundary_points) + len(sample_points)
         )
@@ -72,10 +66,7 @@ def train(
     data_batch_size: int,
     global_batch_size: int,
     num_steps: int,
-    activation: Callable,
-    F: Callable,
-    skip_layers: list[int],
-    loss_weights: Array,
+    static: StaticLossArgs,
     key: Array,
 ) -> tuple[Params, Array]:
     """Train the model"""
@@ -89,10 +80,7 @@ def train(
             sample_points=sample_points,
             opt_state=opt_state,
             optim=optim,
-            activation=activation,
-            F=F,
-            skip_layers=skip_layers,
-            loss_weights=loss_weights,
+            static=static,
         )
         return (params, opt_state), loss
 
@@ -106,13 +94,19 @@ if __name__ == "__main__":
     skip_layers = [4]
     num_steps, data_batch_size, global_batch_size = 100, 10, 10
     params = init_mlp_params(layer_sizes, key=init_key, skip_layers=skip_layers)
-    loss_weights = np.array([1, 0.1, 1e-4, 5e-4, 0.1])
     optim = optax.adam(optax.piecewise_constant_schedule(1e-3, {2000 * i: 0.99 for i in range(1, num_steps // 2000 + 1)}))
-    F = lambda x: x / 3
 
     data = normal(data_key, (100, 3))
     data = data / np.linalg.norm(data, axis=-1, keepdims=True)
     data_std = np.ones_like(data) * 0.1
+
+    static = StaticLossArgs(
+        activation=partial(beta_softplus, beta=100.0),
+        F=lambda x: x / 3,
+        skip_layers=skip_layers,
+        loss_weights=np.array([1, 0.1, 1e-4, 5e-4, 0.1]),
+        epsilon=0.1,
+    )
 
     params, loss = train(
         params=params,
@@ -122,10 +116,7 @@ if __name__ == "__main__":
         data_batch_size=data_batch_size,
         global_batch_size=global_batch_size,
         num_steps=num_steps,
-        activation=partial(beta_softplus, beta=100.0),
-        F=F,
-        skip_layers=skip_layers,
-        loss_weights=loss_weights,
+        static=static,
         key=train_key,
     )
     print(loss)

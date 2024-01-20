@@ -3,6 +3,7 @@ from jax.random import normal, split, key
 
 # typing
 from jax import Array
+from typing import NamedTuple
 from collections.abc import Callable
 
 Params = list[tuple[Array, Array]]
@@ -80,20 +81,25 @@ def get_variables(params: Params, x: Array, activation: Callable, F: Callable, s
     return sdf, grad_sdf, G, G_tilde, curl_G_tilde
 
 
-def delta_e(x: Array, epsilon: float):
+def delta_e(x: Array, epsilon: float) -> Array:
     return 1 - np.tanh(x / epsilon) ** 2
+
+
+class StaticLossArgs(NamedTuple):
+    activation: Callable[[Array], Array]
+    F: Callable[[Array], Array]
+    skip_layers: list[int]
+    loss_weights: Array
+    epsilon: float
 
 
 def compute_loss(
     params: Params,
     x: Array,
-    activation: Callable[[Array], Array],
-    F: Callable[[Array], Array],
-    skip_layers: list[int],
-    loss_weights: Array,
-    boundary: bool = False,
-    epsilon: float = 0.1,
+    boundary: bool,
+    static: StaticLossArgs,
 ) -> Array:
+    activation, F, skip_layers, loss_weights, epsilon = static
     sdf, grad_sdf, G, G_tilde, curl_G_tilde = get_variables(params, x, activation, F, skip_layers)
     loss = np.array([
         np.abs(sdf) * boundary,  # loss function for sdf
@@ -114,5 +120,6 @@ if __name__ == "__main__":
     out = mlp_forward(params, x, activation=nn.relu, skip_layers=skip_layers)
     assert out.shape == (7,)
     F = lambda x: x / 3
-    loss = compute_loss(params, x, activation=nn.relu, F=F, skip_layers=skip_layers, loss_weights=loss_weights)
+    static = StaticLossArgs(activation=nn.relu, F=F, skip_layers=skip_layers, loss_weights=loss_weights, epsilon=0.1)
+    loss = compute_loss(params, x, boundary=True, static=static)
     print(loss)
