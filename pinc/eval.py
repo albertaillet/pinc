@@ -4,7 +4,7 @@ import numpy as np
 from jax import Array, vmap
 from skimage.measure import marching_cubes
 
-from pinc.metrics import chamfer_distance, directed_chamfer_distance, directed_hausdorff_distance, hausdorff_distance
+from pinc.distance import chamfer, directed_chamfer, directed_hausdorff, hausdorff
 from pinc.model import Params, StaticLossArgs, get_variables, mlp_forward
 
 
@@ -30,19 +30,14 @@ def evaluate(points: Array, normals: Array, params: Params, static: StaticLossAr
     level_set_value = max(0.0, values.min())  # TODO: use this or a try except
     level_set_points, _, _, _ = marching_cubes(values.reshape(resolution, resolution, resolution), level_set_value)
 
-    # Calculate the distance metrics
+    # Calculate the distance metrics and return
     numpy_points = np.array(points)
-    cd = chamfer_distance(level_set_points, numpy_points)
-    dcd = directed_chamfer_distance(level_set_points, numpy_points)
-    hd = hausdorff_distance(level_set_points, numpy_points)
-    dhd = directed_hausdorff_distance(level_set_points, numpy_points)
-
     return {
         "normal_consistency": nc,
-        "chamfer_distance": cd,
-        "directed_chamfer_distance": dcd,
-        "hausdorff_distance": hd,
-        "directed_hausdorff_distance": dhd,
+        "chamfer": chamfer(level_set_points, numpy_points),
+        "directed_chamfer": directed_chamfer(level_set_points, numpy_points),
+        "hausdorff": hausdorff(level_set_points, numpy_points),
+        "directed_hausdorff": directed_hausdorff(level_set_points, numpy_points),
     }
 
 
