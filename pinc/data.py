@@ -5,12 +5,13 @@ from plyfile import PlyData
 from scipy.spatial import cKDTree
 
 
-def load_ply(path: Path) -> np.ndarray:
+def load_ply(path: Path) -> tuple[np.ndarray, np.ndarray]:
     """Load point cloud from .ply file."""
     assert path.exists() and path.suffix == ".ply"
     with open(path, "rb") as f:
         plydata = PlyData.read(f)
-    return np.stack([plydata["vertex"][coord] for coord in "xyz"], axis=1)
+    data = np.stack([plydata["vertex"][coord] for coord in ["x", "y", "z", "nx", "ny", "nz"]], axis=1)
+    return data[:, :3], data[:, 3:]  # points, normals
 
 
 def process_points(points: np.ndarray) -> tuple[np.ndarray, float, np.ndarray]:
@@ -32,7 +33,8 @@ def get_sigma(points: np.ndarray, k: int = 50):
 if __name__ == "__main__":
     repo_root = Path(__file__).resolve().parent.parent
     ply_file = repo_root / "data/scans/gargoyle.ply"
-    points = load_ply(ply_file)
+    points, normals = load_ply(ply_file)
+    print(points.shape, normals.shape)
     points, max_coord, center_point = process_points(points)
     print(points.shape, max_coord, center_point)
 
