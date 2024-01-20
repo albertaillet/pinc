@@ -7,7 +7,7 @@ from functools import partial
 
 from pinc.train import train
 from pinc.model import init_mlp_params, beta_softplus
-from pinc.data import load_ply, get_sigma
+from pinc.data import load_ply, process_points, get_sigma
 
 
 def get_args() -> argparse.Namespace:
@@ -35,6 +35,15 @@ def get_args() -> argparse.Namespace:
 def main(args: argparse.Namespace):
     print("Initializing...")
     repo_root = Path(__file__).resolve().parent.parent
+    if args.data_filename in ["anchor", "daratech", "dc", "gargoyle", "lord_quas"]:
+        points = load_ply(repo_root / f"data/scans/{args.data_filename}.ply")
+        points, _, _ = process_points(points)
+    elif args.data_filename == "sphere":
+        points = normal(key(21), (1000, 3))
+        points = points / np.linalg.norm(points, axis=-1, keepdims=True)
+    else:
+        raise ValueError(f"Unknown data filename: {args.data_filename}")
+    data_std = get_sigma(points)
 
     init_key, train_key = split(key(args.seed), 2)
 
@@ -43,15 +52,6 @@ def main(args: argparse.Namespace):
     params = init_mlp_params(layer_sizes, key=init_key, skip_layers=skip_layers)
 
     optim = optax.adam(optax.piecewise_constant_schedule(args.lr, {2000 * i: 0.99 for i in range(1, args.n_steps // 2000 + 1)}))
-
-    if args.data_filename == "gargoyle":
-        points = load_ply(repo_root / "data/scans/gargoyle.ply")
-    elif args.data_filename == "sphere":
-        points = normal(key(21), (1000, 3))
-        points = points / np.linalg.norm(points, axis=-1, keepdims=True)
-    else:
-        raise ValueError(f"Unknown data filename: {args.data_filename}")
-    data_std = get_sigma(points)
 
     print("Starting training...")
     params, loss = train(
