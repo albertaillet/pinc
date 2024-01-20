@@ -36,7 +36,3 @@ if __name__ == "__main__":
     y = random_state.rand(512, 3)
     print(chamfer_distance(x, y))
     print(hausdorff_distance(x, y))
-
-    x = random_state.rand(10_000, 3)
-    y = random_state.rand(10_000, 3)
-    print(normal_consistency(x, y))
