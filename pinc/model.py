@@ -1,8 +1,5 @@
-from jax import numpy as jnp, nn, jacfwd
+from jax import numpy as jnp, nn, jacfwd, Array
 from jax.random import normal, split, key
-
-# typing
-from jax import Array
 from typing import NamedTuple
 from collections.abc import Callable
 

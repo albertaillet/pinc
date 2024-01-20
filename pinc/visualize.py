@@ -2,8 +2,6 @@ import numpy as np
 from functools import partial
 from plotly import graph_objects as go
 from skimage.measure import marching_cubes
-
-# typing
 from collections.abc import Callable
 
 
