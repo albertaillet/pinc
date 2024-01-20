@@ -1,13 +1,15 @@
-import optax
 import argparse
-from jax import numpy as jnp, nn
-from jax.random import key, split, normal
-from pathlib import Path
 from functools import partial
+from pathlib import Path
 
+import jax.numpy as jnp
+import optax
+from jax.nn import relu
+from jax.random import key, normal, split
+
+from pinc.data import get_sigma, load_ply, process_points
+from pinc.model import StaticLossArgs, beta_softplus, init_mlp_params
 from pinc.train import train
-from pinc.model import init_mlp_params, beta_softplus, StaticLossArgs
-from pinc.data import load_ply, process_points, get_sigma
 
 
 def get_args() -> argparse.Namespace:
@@ -59,7 +61,7 @@ def main(args: argparse.Namespace):
     # softplus if defined for beta > 0 and approachs relu when beta approaches infinty
     # if beta < 0, then we set it to relu
     static = StaticLossArgs(
-        activation=partial(beta_softplus, beta=args.beta) if args.beta > 0 else nn.relu,
+        activation=partial(beta_softplus, beta=args.beta) if args.beta > 0 else relu,
         F=lambda x: x / 3,
         skip_layers=skip_layers,
         loss_weights=jnp.array(args.loss_weights),

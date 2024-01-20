@@ -22,7 +22,7 @@ build-backend = "hatchling.build"
 include = ["pinc/*"]
 
 [tool.ruff]
-select = ["E", "F", "W", "C90", "UP", "SIM", "TID"]
+select = ["E", "F", "W", "C90", "UP", "SIM", "TID", "I"]
 line-length = 130
 ignore = ["E731"] # Allow named lambdas
 preview = true

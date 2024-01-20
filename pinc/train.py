@@ -1,8 +1,11 @@
-import optax
-from jax.random import key, split, choice, normal
-from jax import numpy as jnp, value_and_grad, Array, vmap, lax
-from pinc.model import beta_softplus, init_mlp_params, compute_loss, Params, StaticLossArgs
 from functools import partial
+
+import jax.numpy as jnp
+import optax
+from jax import Array, lax, value_and_grad, vmap
+from jax.random import choice, key, normal, split
+
+from pinc.model import Params, StaticLossArgs, beta_softplus, compute_loss, init_mlp_params
 
 
 def step(
