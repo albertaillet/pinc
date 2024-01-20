@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.spatial import distance, cKDTree
+from scipy.spatial import cKDTree, distance
 
 
 def directed_chamfer_distance(x: np.ndarray, y: np.ndarray) -> float:

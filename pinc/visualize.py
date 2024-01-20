@@ -1,8 +1,9 @@
-import numpy as np
+from collections.abc import Callable
 from functools import partial
+
+import numpy as np
 from plotly import graph_objects as go
 from skimage.measure import marching_cubes
-from collections.abc import Callable
 
 
 def sdf_sphere(points: np.ndarray, radius: float) -> np.ndarray:

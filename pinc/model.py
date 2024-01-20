@@ -1,7 +1,9 @@
-from jax import numpy as jnp, nn, jacfwd, Array
-from jax.random import normal, split, key
-from typing import NamedTuple
 from collections.abc import Callable
+from typing import NamedTuple
+
+import jax.numpy as jnp
+from jax import Array, jacfwd, nn
+from jax.random import key, normal, split
 
 Params = list[tuple[Array, Array]]
 
