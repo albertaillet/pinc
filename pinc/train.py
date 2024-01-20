@@ -19,6 +19,7 @@ def step(
     """Compute loss and update parameters"""
 
     def batch_loss(params: Params, boundary_points: Array, sample_points: Array) -> Array:
+        F = lambda x: x / 3  # TODO: fix
         gen_loss = partial(
             compute_loss, params=params, activation=beta_softplus, F=F, skip_layers=skip_layers, loss_weights=loss_weights
         )

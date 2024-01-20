@@ -23,7 +23,7 @@ def process_points(points: np.ndarray) -> tuple[np.ndarray, float, np.ndarray]:
     return points, max_coord, center_point
 
 
-def get_sigma(points: np.ndarray, k: int = 50):
+def get_sigma(points: np.ndarray, k: int = 50) -> np.ndarray:
     """Caculates the distance to the kth nearest neighbor of each point."""
     tree = cKDTree(points)
     d, _ = tree.query(points, [k + 1])  # k+1 to remove self
