@@ -1,11 +1,10 @@
-from functools import partial
-
+import jax.numpy as jnp
 import numpy as np
 from jax import Array, vmap
-from skimage.measure import marching_cubes
 
 from pinc.distance import chamfer, directed_chamfer, directed_hausdorff, hausdorff
 from pinc.model import Params, StaticLossArgs, get_variables, mlp_forward
+from pinc.utils import mesh_from_sdf
 
 
 def normal_consistency(x: Array, y: Array) -> Array:
@@ -13,27 +12,33 @@ def normal_consistency(x: Array, y: Array) -> Array:
     return jnp.mean(jnp.abs(jnp.sum(x * y, axis=1)))
 
 
-def evaluate(points: Array, normals: Array, params: Params, static: StaticLossArgs) -> dict[str, float]:
-    # Calculate the normal consistency
-    forward = partial(get_variables, params, activation=static.activation, F=static.F, skip_layers=static.skip_layers)
-    (_, _, G, _, _) = vmap(forward)(points)
-    nc = normal_consistency(G, normals).item()
+def computer_normal_consistency(points: Array, normals: Array, params: Params, static: StaticLossArgs) -> float:
+    """Computes the normal consistency of a point cloud."""
+
+    def get_G(x: Array) -> Array:
+        return get_variables(params, x, activation=static.activation, F=static.F, skip_layers=static.skip_layers)[2]
+
+    G = vmap(get_G)(points)
+    return normal_consistency(G, normals).item()
+
+
+def compute_distances(
+    points: Array, params: Params, static: StaticLossArgs, grid_range: float, resolution: int, level: float
+) -> dict[str, float]:
+    """Computes the distance metrics between a the implicit function and a point cloud."""
 
     # Level set extraction
-    forward = partial(mlp_forward, params, activation=static.activation, skip_layers=static.skip_layers)
-    max_pts = 1.5  # TODO: set as arguments
-    resolution = 40
-    coord = jnp.linspace(-max_pts, max_pts, resolution)
-    grid = jnp.stack(jnp.meshgrid(coord, coord, coord), axis=-1).reshape(-1, 3)
-    out = vmap(forward)(grid)
-    values = np.array(out[:, 0]).reshape(resolution, resolution, resolution)
-    level_set_value = max(0.0, values.min())  # TODO: use this or a try except
-    level_set_points, _, _, _ = marching_cubes(values.reshape(resolution, resolution, resolution), level_set_value)
+    def sdf(point: Array) -> Array:
+        return mlp_forward(params, point, activation=static.activation, skip_layers=static.skip_layers)[0]
+
+    level = 2  # TODO: this should be zero
+    level_set_points, _, _, _ = mesh_from_sdf(sdf, grid_range=grid_range, resolution=resolution, level=level)
+
+    # TODO: use trimesh.sample.sample_surface here
 
     # Calculate the distance metrics and return
-    numpy_points = np.array(points)
+    numpy_points = np.asarray(points)
     return {
-        "normal_consistency": nc,
         "chamfer": chamfer(level_set_points, numpy_points),
         "directed_chamfer": directed_chamfer(level_set_points, numpy_points),
         "hausdorff": hausdorff(level_set_points, numpy_points),
@@ -44,7 +49,6 @@ def evaluate(points: Array, normals: Array, params: Params, static: StaticLossAr
 if __name__ == "__main__":
     from pathlib import Path
 
-    import jax.numpy as jnp
     from jax import nn, random
 
     from pinc.data import load_ply, process_points
@@ -61,5 +65,8 @@ if __name__ == "__main__":
     points, normals = jnp.array(points), jnp.array(normals)
 
     static = StaticLossArgs(activation=activation, F=F, skip_layers=skip_layers, loss_weights=None, epsilon=None)  # type: ignore
-    out = evaluate(points, normals, params, static)
-    print(out)
+    nc = computer_normal_consistency(points, normals, params, static)
+    print({"normal_consistency": nc})
+
+    dists = compute_distances(points, params, static, grid_range=1.5, resolution=40, level=0.0)
+    print(dists)
