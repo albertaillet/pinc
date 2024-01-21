@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.spatial import cKDTree, distance
+from trimesh import Trimesh, sample
 
 
 def directed_chamfer(x: np.ndarray, y: np.ndarray) -> float:
@@ -25,9 +26,58 @@ def hausdorff(x: np.ndarray, y: np.ndarray) -> float:
     return np.maximum(directed_hausdorff(x, y), directed_hausdorff(y, x))
 
 
+def distances(x: np.ndarray, y: np.ndarray) -> dict[str, float]:
+    """Computes the Chamfer and Hausdorff distances between two point clouds."""
+    # TODO: fix the fact that the distances are calculated multiple times
+    return {
+        "chamfer": chamfer(x, y),
+        "directed_chamfer": directed_chamfer(x, y),
+        "hausdorff": hausdorff(x, y),
+        "directed_hausdorff": directed_hausdorff(x, y),
+    }
+
+
+def mesh_distances(recon: Trimesh, gt: Trimesh, scan: Trimesh, n_samples: int) -> dict[str, dict[str, float]]:
+    """Computes the distance metrics between a the reconstruction and the ground truth and the scan."""
+    # NOTE: it is unclear from the paper if the ground truth and scan are sampled or not
+    # We suspect the authors used the code from https://github.com/Chumbyte/DiGS/
+    # In compute_metrics_srb.py (1) and compute_metrics_shapenet.py (2), only the reconstruction is sampled
+    # while in collectMetrics.py (3) and eval_shapespace.py (4), the reconstruction, ground truth and scan are sampled
+    # (1) https://github.com/Chumbyte/DiGS/blob/main/surface_reconstruction/compute_metrics_srb.py#L72
+    # (2) https://github.com/Chumbyte/DiGS/blob/main/surface_reconstruction/compute_metrics_shapenet.py#L143
+    # (3) https://github.com/Chumbyte/DiGS/blob/main/shapespace/collectMetrics.py#L73
+    # (4) https://github.com/Chumbyte/DiGS/blob/main/shapespace/eval_shapespace.py#L157
+    # The most probable scenario is that the authors used the code from (1), which only samples the reconstruction
+
+    # NOTE: reconstruction vertices must but multiplied by the scale factor and translated by the center
+    reconstruction_points, *_ = sample.sample_surface(recon, n_samples)
+    # gt_points, *_ = sample.sample_surface(ground_truth, n_samples)
+    # scan_points, *_ = sample.sample_surface(scan, n_samples)
+
+    gt_points = gt.vertices
+    scan_points = scan.vertices
+
+    # Calculate the distance metrics and return
+    return {
+        "reconstruction": distances(gt_points, reconstruction_points),
+        "scan": distances(gt_points, scan_points),
+    }
+
+
 if __name__ == "__main__":
+    import json
+
     random_state = np.random.RandomState(0)
-    x = random_state.rand(10_000, 3)
-    y = random_state.rand(512, 3)
+    x = random_state.rand(420, 3)
+    y = random_state.rand(1337, 3)
     print(chamfer(x, y))
     print(hausdorff(x, y))
+    print(distances(x, y))
+
+    faces = random_state.randint(0, 420, size=(420, 3))
+
+    recon = Trimesh(vertices=x, faces=faces)
+    gt = Trimesh(vertices=x, faces=faces)
+    scan = Trimesh(vertices=y, faces=faces)
+
+    print(json.dumps(mesh_distances(recon=recon, gt=gt, scan=scan, n_samples=100), indent=2))
