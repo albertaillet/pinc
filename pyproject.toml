@@ -9,7 +9,6 @@ dependencies = [
     "optax==0.1.8",
     "scikit-image==0.22.0",
     "trimesh==4.0.9",
-    "plyfile==1.0.3",
     "plotly==5.18.0",
     "pre-commit==3.6.0"
 ]
