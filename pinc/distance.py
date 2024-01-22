@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.spatial import cKDTree, distance
-from trimesh import Trimesh, sample
+from trimesh import PointCloud, Trimesh, sample
 
 
 def directed_chamfer(x: np.ndarray, y: np.ndarray) -> float:
@@ -37,7 +37,7 @@ def distances(x: np.ndarray, y: np.ndarray) -> dict[str, float]:
     }
 
 
-def mesh_distances(recon: Trimesh, gt: Trimesh, scan: Trimesh, n_samples: int) -> dict[str, dict[str, float]]:
+def mesh_distances(recon: Trimesh, gt: PointCloud, scan: PointCloud, n_samples: int) -> dict[str, dict[str, float]]:
     """Computes the distance metrics between a the reconstruction and the ground truth and the scan."""
     # NOTE: it is unclear from the paper if the ground truth and scan are sampled or not
     # We suspect the authors used the code from https://github.com/Chumbyte/DiGS/
@@ -65,19 +65,29 @@ def mesh_distances(recon: Trimesh, gt: Trimesh, scan: Trimesh, n_samples: int) -
 
 
 if __name__ == "__main__":
-    import json
+    from json import dumps
+    from pathlib import Path
 
+    from trimesh import load
+
+    n_in_recon = 10
+    n_samples = 10
     random_state = np.random.RandomState(0)
-    x = random_state.rand(420, 3)
-    y = random_state.rand(1337, 3)
-    print(chamfer(x, y))
-    print(hausdorff(x, y))
-    print(distances(x, y))
+    vertices = random_state.rand(n_in_recon, 3)
+    faces = random_state.randint(0, n_in_recon, size=(n_in_recon, 3))
+    recon = Trimesh(vertices=vertices, faces=faces)
 
-    faces = random_state.randint(0, 420, size=(420, 3))
+    repo_root = Path(__file__).resolve().parent.parent
+    names = ["anchor", "daratech", "dc", "gargoyle", "lord_quas"]  # SRB dataset
+    for name in names:
+        print(name)
 
-    recon = Trimesh(vertices=x, faces=faces)
-    gt = Trimesh(vertices=x, faces=faces)
-    scan = Trimesh(vertices=y, faces=faces)
+        scan = load(repo_root / f"data/scans/{name}.ply")
+        assert isinstance(scan, PointCloud)
 
-    print(json.dumps(mesh_distances(recon=recon, gt=gt, scan=scan, n_samples=100), indent=2))
+        gt = load(repo_root / f"data/ground_truth/{name}.xyz")
+        assert isinstance(gt, PointCloud)
+
+        print(scan.vertices.shape, gt.vertices.shape)
+
+        print(dumps(mesh_distances(recon=recon, gt=gt, scan=scan, n_samples=n_samples), indent=2))
