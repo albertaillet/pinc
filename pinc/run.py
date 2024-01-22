@@ -16,6 +16,8 @@ from pinc.normal_consistency import computer_normal_consistency
 from pinc.train import train
 from pinc.utils import mesh_from_sdf
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
 
 def get_args() -> argparse.Namespace:
     """Parse command line arguments, if not specified, the default values are the same as in the paper."""
@@ -42,11 +44,30 @@ def get_args() -> argparse.Namespace:
     return args
 
 
+def eval_step(params, points, normals, static, max_coord, center_point, args):
+    print("Computing normal consistency...")
+    normal_consistency = computer_normal_consistency(points=points, normals=normals, params=params, static=static)
+    print(normal_consistency)
+
+    print("Getting mesh distances...")
+
+    def sdf(x: jnp.ndarray) -> jnp.ndarray:
+        return mlp_forward(params, x, activation=static.activation, skip_layers=static.skip_layers)[0]
+
+    recon_vertices, recon_faces = mesh_from_sdf(sdf, grid_range=1.5, resolution=10, level=0)  # TODO: resolution 256 in paper
+    recon_vertices = recon_vertices * max_coord + center_point
+    recon_mesh = trimesh.Trimesh(vertices=recon_vertices, faces=recon_faces)
+    ground_truth_mesh = trimesh.load(REPO_ROOT / f"data/ground_truth/{args.data_filename}.xyz")
+    scan_mesh = trimesh.load(REPO_ROOT / f"data/scans/{args.data_filename}.ply")
+    assert isinstance(ground_truth_mesh, trimesh.PointCloud) and isinstance(scan_mesh, trimesh.PointCloud)
+    distances = mesh_distances(recon_mesh, ground_truth_mesh, scan_mesh, n_samples=100)  # TODO: n_sample 10M in paper
+    print(dumps(distances, indent=2))
+
+
 def main(args: argparse.Namespace):
     print("Initializing...")
-    repo_root = Path(__file__).resolve().parent.parent
     if args.data_filename in ["anchor", "daratech", "dc", "gargoyle", "lord_quas"]:
-        points, normals = load_ply(repo_root / f"data/scans/{args.data_filename}.ply")
+        points, normals = load_ply(REPO_ROOT / f"data/scans/{args.data_filename}.ply")
         points, max_coord, center_point = process_points(points)
     else:
         raise ValueError(f"Unknown data filename: {args.data_filename}")
@@ -85,23 +106,8 @@ def main(args: argparse.Namespace):
     )
     print(loss)
 
-    print("Computing normal consistency...")
-    normal_consistency = computer_normal_consistency(points=points, normals=normals, params=params, static=static)
-    print(normal_consistency)
-
-    print("Getting mesh distances...")
-
-    def sdf(x: jnp.ndarray) -> jnp.ndarray:
-        return mlp_forward(params, x, activation=static.activation, skip_layers=static.skip_layers)[0]
-
-    recon_vertices, recon_faces = mesh_from_sdf(sdf, grid_range=1.5, resolution=10, level=0)  # TODO: resolution 256 in paper
-    recon_vertices = recon_vertices * max_coord + center_point
-    recon_mesh = trimesh.Trimesh(vertices=recon_vertices, faces=recon_faces)
-    ground_truth_mesh = trimesh.load(repo_root / f"data/ground_truth/{args.data_filename}.xyz")
-    scan_mesh = trimesh.load(repo_root / f"data/scans/{args.data_filename}.ply")
-    assert isinstance(ground_truth_mesh, trimesh.PointCloud) and isinstance(scan_mesh, trimesh.PointCloud)
-    distances = mesh_distances(recon_mesh, ground_truth_mesh, scan_mesh, n_samples=100)  # TODO: n_sample 10M in paper
-    print(dumps(distances, indent=2))
+    print("Evaluating...")
+    eval_step(params, points, normals, static, max_coord, center_point, args)
 
 
 if __name__ == "__main__":

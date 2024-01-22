@@ -19,5 +19,5 @@ def mesh_from_sdf(sdf: Callable, grid_range: float, resolution: int, level: floa
     sd_grid_numpy = np.array(sd_grid).reshape(resolution, resolution, resolution)
     try:
         return marching_cubes(sd_grid_numpy, level)
-    except ValueError:  # no zero crossing
+    except ValueError:  # no level set crossing
         return np.zeros((1, 3)), np.zeros((1, 3))
