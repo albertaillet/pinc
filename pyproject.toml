@@ -27,6 +27,10 @@ line-length = 130
 ignore = ["E731"] # Allow named lambdas
 preview = true
 
+[tool.black]
+line-length = 130
+preview = true
+
 [tool.pyright]
 reportIncompatibleMethodOverride = true
 include = ["pinc"]
