@@ -17,4 +17,7 @@ def mesh_from_sdf(sdf: Callable, grid_range: float, resolution: int, level: floa
     grid = get_grid(grid_range, resolution)
     sd_grid = vmap(sdf)(grid)
     sd_grid_numpy = np.array(sd_grid).reshape(resolution, resolution, resolution)
-    return marching_cubes(sd_grid_numpy, level)
+    try:
+        return marching_cubes(sd_grid_numpy, level)
+    except ValueError:  # no zero crossing
+        return np.zeros((1, 3)), np.zeros((1, 3))
