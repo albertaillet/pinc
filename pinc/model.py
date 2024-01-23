@@ -5,7 +5,7 @@ from typing import NamedTuple
 import jax.numpy as jnp
 from jax import Array, jacfwd, nn
 from jax.random import key, normal, split
-from numpy import load, savez_compressed
+from numpy import savez_compressed
 
 Params = list[tuple[Array, Array]]
 
@@ -113,34 +113,29 @@ def compute_loss(
 
 
 def save_model(params: Params, path: Path):
-    assert path.suffix == ".npz"
-    param_dict = {}
-    for i, (w, b) in enumerate(params):
-        param_dict[f"w_{i}"] = w
-        param_dict[f"b_{i}"] = b
-    savez_compressed(path, **param_dict)
+    savez_compressed(path, *[jnp.concatenate([w, b[:, None]], axis=1) for w, b in params])
 
 
 def load_model(path: Path) -> Params:
-    assert path.suffix == ".npz"
-    param_dict = load(path, allow_pickle=False)
-    n_layers = len(param_dict) // 2
-    params = [(param_dict[f"w_{i}"], param_dict[f"b_{i}"]) for i in range(n_layers)]
-    return params
+    return [(w_b[:, :-1], w_b[:, -1]) for w_b in jnp.load(path).values()]  # type: ignore
 
 
 if __name__ == "__main__":
     layer_sizes = [3] + [512] * 7 + [7]
     skip_layers = [4]
     params = init_mlp_params(layer_sizes, key=key(0), skip_layers=skip_layers)
-    path = Path(".") / "params.npz"
-    save_model(params, path)
-    params = load_model(path)
     loss_weights = jnp.array([1, 0.1, 1e-4, 1e-4, 0.1])
     x = jnp.arange(3, dtype=jnp.float32)
     out = mlp_forward(params, x, activation=nn.relu, skip_layers=skip_layers)
+    print(out)
     assert out.shape == (7,)
     F = lambda x: x / 3
     static = StaticLossArgs(activation=nn.relu, F=F, skip_layers=skip_layers, loss_weights=loss_weights, epsilon=0.1)
     loss = compute_loss(params, x, boundary=True, static=static)
     print(loss)
+    path = Path(".") / "params.npz"
+    save_model(params, path)
+    params = load_model(path)
+    out_loaded = mlp_forward(params, x, activation=nn.relu, skip_layers=skip_layers)
+    print(out_loaded)
+    assert jnp.allclose(out, out_loaded)
