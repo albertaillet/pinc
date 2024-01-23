@@ -1,9 +1,11 @@
 from collections.abc import Callable
+from pathlib import Path
 from typing import NamedTuple
 
 import jax.numpy as jnp
 from jax import Array, jacfwd, nn
 from jax.random import key, normal, split
+from numpy import load, savez_compressed
 
 Params = list[tuple[Array, Array]]
 
@@ -32,21 +34,21 @@ def init_layer_params(in_dim: int, out_dim: int, key: Array, last_layer: bool) -
 
 def init_mlp_params(dims: list[int], key: Array, skip_layers: list[int]) -> Params:
     input_dim, n_layers = dims[0], len(dims) - 1
-    assert all(0 <= layer_idx < n_layers for layer_idx in skip_layers)
+    assert all(0 <= i < n_layers for i in skip_layers)
     in_dims = dims[:-1]
-    out_dims = [dim - input_dim if layer_idx in skip_layers else dim for layer_idx, dim in enumerate(dims[1:], 1)]
+    out_dims = [dim - input_dim if i in skip_layers else dim for i, dim in enumerate(dims[1:], 1)]
     keys = split(key, n_layers)
     assert len(in_dims) == len(out_dims) == len(keys)
     return [
-        init_layer_params(in_dim, out_dim, key, layer_idx == n_layers)
-        for layer_idx, (in_dim, out_dim, key) in enumerate(zip(in_dims, out_dims, keys), 1)
+        init_layer_params(in_dim, out_dim, key, i == n_layers)
+        for i, (in_dim, out_dim, key) in enumerate(zip(in_dims, out_dims, keys), 1)
     ]
 
 
 def mlp_forward(params: Params, x: Array, activation: Callable[[Array], Array], skip_layers: list[int]) -> Array:
     _in = x
-    for layer_idx, (w, b) in enumerate(params[:-1]):
-        if layer_idx in skip_layers:
+    for i, (w, b) in enumerate(params[:-1]):
+        if i in skip_layers:
             x = jnp.concatenate([x, _in]) / jnp.sqrt(2)  # sqrt(2) seems to not be explained in the paper
         x = activation(w @ x + b)
     w, b = params[-1]
@@ -110,10 +112,30 @@ def compute_loss(
     return loss @ loss_weights
 
 
+def save_model(params: Params, path: Path):
+    assert path.suffix == ".npz"
+    param_dict = {}
+    for i, (w, b) in enumerate(params):
+        param_dict[f"w_{i}"] = w
+        param_dict[f"b_{i}"] = b
+    savez_compressed(path, **param_dict)
+
+
+def load_model(path: Path) -> Params:
+    assert path.suffix == ".npz"
+    param_dict = load(path, allow_pickle=False)
+    n_layers = len(param_dict) // 2
+    params = [(param_dict[f"w_{i}"], param_dict[f"b_{i}"]) for i in range(n_layers)]
+    return params
+
+
 if __name__ == "__main__":
     layer_sizes = [3] + [512] * 7 + [7]
     skip_layers = [4]
     params = init_mlp_params(layer_sizes, key=key(0), skip_layers=skip_layers)
+    path = Path(".") / "params.npz"
+    save_model(params, path)
+    params = load_model(path)
     loss_weights = jnp.array([1, 0.1, 1e-4, 1e-4, 0.1])
     x = jnp.arange(3, dtype=jnp.float32)
     out = mlp_forward(params, x, activation=nn.relu, skip_layers=skip_layers)
