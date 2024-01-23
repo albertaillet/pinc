@@ -7,9 +7,10 @@ def figure(trace, title) -> go.Figure:
         layout=go.Layout(
             title=title,
             scene=dict(
-                xaxis=dict(title="X"),
-                yaxis=dict(title="Y"),
-                zaxis=dict(title="Z"),
+                xaxis=dict(title="X", range=[-2, 2], autorange=False),
+                yaxis=dict(title="Y", range=[-2, 2], autorange=False),
+                zaxis=dict(title="Z", range=[-2, 2], autorange=False),
+                aspectratio=dict(x=1, y=1, z=1),
             ),
         ),
     )
@@ -48,6 +49,7 @@ if __name__ == "__main__":
 
     import jax.numpy as jnp
 
+    import wandb
     from pinc.utils import Array, mesh_from_sdf
 
     def sdf_sphere(point: Array, radius: float) -> Array:
@@ -57,7 +59,13 @@ if __name__ == "__main__":
         q = jnp.stack([jnp.linalg.norm(point[:2]) - radius, point[2]])
         return jnp.linalg.norm(q) - tube_radius
 
-    sdf = partial(sdf_torus, radius=0.2, tube_radius=0.1)
-    verts, faces, _, _ = mesh_from_sdf(sdf, grid_range=1.5, resolution=40, level=0.0)
-    plot_points(verts, title="Torus").show()
-    plot_mesh(verts, faces, title="Torus").show()
+    run = wandb.init(project="test-plotly-viz")
+
+    # Log Table
+    for i in range(1, 10):
+        print(i)
+        sdf = partial(sdf_sphere, radius=0.1 * i)
+        verts, faces = mesh_from_sdf(sdf, grid_range=1.5, resolution=40, level=0)
+        fig = plot_mesh(verts, faces, title="Sphere")
+        wandb.log({"this-should-be-a-figure": fig}, step=i)
+    wandb.finish()
