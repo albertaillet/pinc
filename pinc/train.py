@@ -6,13 +6,7 @@ import wandb
 from jax import Array, lax, value_and_grad, vmap
 from jax.random import choice, key, normal, split
 
-from pinc.model import (
-    Params,
-    StaticLossArgs,
-    beta_softplus,
-    compute_loss,
-    init_mlp_params,
-)
+from pinc.model import Params, StaticLossArgs, beta_softplus, compute_loss, init_mlp_params
 from pinc.utils import scan_eval_log
 
 
@@ -56,13 +50,7 @@ def sample_local_points(data_points: Array, std: Array, batch_size: int, key: Ar
     return data_points + normal(key, (batch_size, 3)) * std
 
 
-def get_batch(
-    data: Array,
-    data_std: Array,
-    data_batch_size: int,
-    global_batch_size: int,
-    key: Array,
-) -> tuple[Array, Array]:
+def get_batch(data: Array, data_std: Array, data_batch_size: int, global_batch_size: int, key: Array) -> tuple[Array, Array]:
     """Get batch of data"""
     data_key, local_key, global_key = split(key, 3)
 
@@ -107,11 +95,7 @@ def train(
         )
         return (params, opt_state), loss
 
-    (params, _), loss = lax.scan(
-        scan_fn,
-        (params, optim.init(params)),
-        (jnp.arange(num_steps), split(key, num_steps)),
-    )
+    (params, _), loss = lax.scan(scan_fn, (params, optim.init(params)), (jnp.arange(num_steps), split(key, num_steps)))
     return params, loss
 
 
