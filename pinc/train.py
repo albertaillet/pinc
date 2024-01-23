@@ -7,6 +7,7 @@ import wandb
 from jax import Array, lax, value_and_grad, vmap
 from jax.random import choice, key, normal, split
 
+from pinc.evaluation import log_loss
 from pinc.model import Params, StaticLossArgs, beta_softplus, compute_loss, init_mlp_params
 from pinc.utils import scan_eval_log
 
@@ -82,7 +83,7 @@ def train(
         eval_freq=eval_freq,
         loss_freq=loss_freq,
         log_eval=lambda args, _: eval_fn(params=args[0], step=args[1]),
-        log_loss=lambda args, _: wandb.log({"loss": args[0]}, step=args[1]),
+        log_loss=lambda args, _: log_loss(loss=args[0], step=args[1]),
     )
     def scan_fn(carry: tuple[Params, optax.OptState], it) -> tuple[tuple[Params, optax.OptState], Array]:
         params, opt_state = carry
