@@ -1,4 +1,5 @@
 from functools import partial
+from typing import Callable, Optional
 
 import jax.numpy as jnp
 import optax
@@ -82,15 +83,18 @@ def train(
     global_batch_size: int,
     num_steps: int,
     static: StaticLossArgs,
+    eval_fn: Callable,
+    eval_freq: Optional[int],
+    loss_freq: Optional[int],
     key: Array,
 ) -> tuple[Params, Array]:
     """Train the model"""
 
     @scan_eval_log(
-        eval_freq=None,
-        loss_freq=10,
-        log_eval=lambda x, _: wandb.log({"eval": x[0]}, step=x[1]),
-        log_loss=lambda x, _: wandb.log({"loss": x[0]}, step=x[1]),
+        eval_freq=eval_freq,
+        loss_freq=loss_freq,
+        log_eval=lambda args, _: eval_fn(params=args[0], step=args[1]),
+        log_loss=lambda args, _: wandb.log({"loss": args[0]}, step=args[1]),
     )
     def scan_fn(carry: tuple[Params, optax.OptState], it) -> tuple[tuple[Params, optax.OptState], Array]:
         params, opt_state = carry
@@ -127,7 +131,7 @@ if __name__ == "__main__":
     data = data / jnp.linalg.norm(data, axis=-1, keepdims=True)
     data_std = jnp.ones_like(data) * 0.1
 
-    wandb.init(project="test")
+    wandb.init(project="pinc", entity="reproducibility-challenge")
 
     static = StaticLossArgs(
         activation=partial(beta_softplus, beta=100.0),
@@ -136,6 +140,7 @@ if __name__ == "__main__":
         loss_weights=jnp.array([1, 0.1, 1e-4, 5e-4, 0.1]),
         epsilon=0.1,
     )
+    eval_fn = lambda model, step: print(model, step)
 
     params, loss = train(
         params=params,
@@ -146,6 +151,9 @@ if __name__ == "__main__":
         global_batch_size=global_batch_size,
         num_steps=num_steps,
         static=static,
+        eval_fn=eval_fn,
+        eval_freq=None,
+        loss_freq=10,
         key=train_key,
     )
     print(loss)

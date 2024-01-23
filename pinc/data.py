@@ -1,8 +1,13 @@
 from pathlib import Path
 
+import jax.numpy as jnp
 import numpy as np
 import trimesh
+from jax import Array
+from jax.random import key, normal
 from scipy.spatial import cKDTree
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 def load_ply(path: Path) -> tuple[np.ndarray, np.ndarray]:
@@ -34,9 +39,26 @@ def get_sigma(points: np.ndarray, k: int = 50) -> np.ndarray:
     return d  # shape (n, 1)
 
 
+def create_sphere(n: int = 1000, data_key=key(0)) -> Array:
+    points = normal(data_key, (n, 3))
+    return points / jnp.linalg.norm(points, axis=-1, keepdims=True)
+
+
+def load_SRB(data_filename: str) -> tuple[Array, Array, Array, float, Array]:
+    if data_filename in ["anchor", "daratech", "dc", "gargoyle", "lord_quas"]:
+        points, normals = load_ply(REPO_ROOT / f"data/scans/{data_filename}.ply")
+    elif data_filename == "sphere":
+        points = np.array(create_sphere())
+        normals = points.copy()
+    else:
+        raise ValueError(f"Unknown data filename: {data_filename}")
+    points, max_coord, center_point = process_points(points)
+    data_std = get_sigma(points)
+    return jnp.array(points), jnp.array(normals), jnp.array(data_std), max_coord, jnp.array(center_point)
+
+
 if __name__ == "__main__":
-    repo_root = Path(__file__).resolve().parent.parent
-    for ply_file in repo_root.glob("data/scans/*.ply"):
+    for ply_file in REPO_ROOT.glob("data/scans/*.ply"):
         points, normals = load_ply(ply_file)
         print(ply_file, points.shape, normals.shape)
         points, normals = load_ply(ply_file)
