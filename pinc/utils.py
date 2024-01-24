@@ -68,9 +68,10 @@ def scan_eval_log(
 
 if __name__ == "__main__":
     import jax.numpy as jnp
+
     import wandb
 
-    wandb.init(project="test")
+    wandb.init(project="test", mode="offline")
 
     @scan_eval_log(
         eval_freq=None,
