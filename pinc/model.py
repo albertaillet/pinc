@@ -11,10 +11,13 @@ Params = list[tuple[Array, Array]]
 
 
 def beta_softplus(x: Array, beta: float) -> Array:
+    """Compute the softplus activation function with a beta parameter."""
     return nn.softplus(x * beta) / beta
 
 
 def init_layer_params(in_dim: int, out_dim: int, key: Array, last_layer: bool) -> tuple[Array, Array]:
+    """Initialize the parameters of a single layer of a multi-layer perceptron using geometric initialization."""
+
     def create_params(w_mean: Array, w_std: Array, b_const: float) -> tuple[Array, Array]:
         return w_mean + w_std * normal(key, (out_dim, in_dim)), b_const * jnp.ones(out_dim)
 
@@ -33,6 +36,7 @@ def init_layer_params(in_dim: int, out_dim: int, key: Array, last_layer: bool) -
 
 
 def init_mlp_params(dims: list[int], key: Array, skip_layers: list[int]) -> Params:
+    """Initialize the parameters of a multi-layer perceptron."""
     input_dim, n_layers = dims[0], len(dims) - 1
     assert all(0 <= i < n_layers for i in skip_layers)
     in_dims = dims[:-1]
@@ -46,6 +50,7 @@ def init_mlp_params(dims: list[int], key: Array, skip_layers: list[int]) -> Para
 
 
 def mlp_forward(params: Params, x: Array, activation: Callable[[Array], Array], skip_layers: list[int]) -> Array:
+    """Compute the output of the multi-layer perceptron on one data point."""
     _in = x
     for i, (w, b) in enumerate(params[:-1]):
         if i in skip_layers:
@@ -56,6 +61,7 @@ def mlp_forward(params: Params, x: Array, activation: Callable[[Array], Array], 
 
 
 def curl_from_jacobian(jacobian: Array) -> Array:
+    """Compute the curl of a vector field from its Jacobian."""
     return jnp.array([
         jacobian[2, 1] - jacobian[1, 2],
         jacobian[0, 2] - jacobian[2, 0],
@@ -64,6 +70,8 @@ def curl_from_jacobian(jacobian: Array) -> Array:
 
 
 def get_variables(params: Params, x: Array, activation: Callable, F: Callable, skip_layers: list[int]) -> tuple[Array, ...]:
+    """Compute the sdf and auxiliary variables of the PINC model."""
+
     def forward_and_aux(x: Array):
         out = mlp_forward(params, x, activation, skip_layers)
         sdf, phi, phi_tilde = out[0], out[1:4], out[4:7]
@@ -100,6 +108,7 @@ def compute_loss(
     boundary: bool,
     static: StaticLossArgs,
 ) -> Array:
+    """Compute the loss function on one data point."""
     activation, F, skip_layers, loss_weights, epsilon = static
     sdf, grad_sdf, G, G_tilde, curl_G_tilde = get_variables(params, x, activation, F, skip_layers)
     loss = jnp.array([
@@ -112,12 +121,14 @@ def compute_loss(
     return loss @ loss_weights
 
 
-def save_model(params: Params, path: Path):
+def save_model(params: Params, path: Path) -> None:
+    """Save model parameters to a compressed .npz file."""
     savez_compressed(path, *[jnp.concatenate([w, b[:, None]], axis=1) for w, b in params])
 
 
 def load_model(path: Path) -> Params:
-    return [(w_b[:, :-1], w_b[:, -1]) for w_b in jnp.load(path).values()]  # type: ignore
+    """Load model parameters from a .npz file."""
+    return [(w_b[:, :-1], w_b[:, -1]) for w_b in jnp.load(path, allow_pickle=False).values()]  # type: ignore
 
 
 if __name__ == "__main__":
