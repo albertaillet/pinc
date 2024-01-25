@@ -26,14 +26,12 @@ def eval_step(params, points, normals, static, max_coord, center_point, data_fil
     else:
         distances = dict()
 
-    return normal_consistency, distances
+    return dict(normal_consistency=normal_consistency, **distances)
 
 
 def log_eval(params, points, normals, static, max_coord, center_point, data_filename, n_eval_samples, step):
-    normal_consistency, distances = eval_step(
-        params, points, normals, static, max_coord, center_point, data_filename, n_eval_samples
-    )
-    wandb.log(dict(normal_consistency=normal_consistency, **distances), step=step)
+    metrics = eval_step(params, points, normals, static, max_coord, center_point, data_filename, n_eval_samples)
+    wandb.log(metrics, step=step)
 
 
 def log_loss(loss, step):
