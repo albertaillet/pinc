@@ -27,6 +27,7 @@ def get_args() -> argparse.Namespace:
 
     parser.add_argument("-n", "--n-steps", type=int, default=100_000, help="Number of training steps.")
     parser.add_argument("-bs", "--data-batch-size", type=int, default=16384, help="Batch size.")
+    parser.add_argument("-eta", "--eta", type=float, default=1.1, help="Eta parameter for global batch uniform generation.")
 
     parser.add_argument("-hd", "--mlp-hidden-dim", type=int, default=512, help="Hidden dimension of MLP.")
     parser.add_argument("-nl", "--mlp-n-layers", type=int, default=7, help="Number of layers in MLP.")
@@ -83,6 +84,7 @@ def main(args: argparse.Namespace):
         params=params,
         data=points,
         data_std=data_std,
+        eta=args.eta,
         optim=optim,
         data_batch_size=args.data_batch_size,
         global_batch_size=args.global_batch_size,

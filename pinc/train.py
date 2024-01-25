@@ -4,7 +4,7 @@ from typing import Callable, Optional
 import jax.numpy as jnp
 import optax
 from jax import Array, lax, value_and_grad, vmap
-from jax.random import choice, key, normal, split
+from jax.random import choice, key, normal, split, uniform
 
 from pinc.experiment_logging import scan_eval_log
 from pinc.model import Params, StaticLossArgs, beta_softplus, compute_loss, init_mlp_params
@@ -40,9 +40,9 @@ def sample_data(data: Array, data_std: Array, batch_size: int, key: Array) -> tu
     return data[random_indices], data_std[random_indices]
 
 
-def sample_global_points(batch_size: int, key: Array) -> Array:
+def sample_global_points(batch_size: int, key: Array, eta: float) -> Array:
     """Get batch of global points"""
-    return normal(key, (batch_size, 3))
+    return uniform(key, (batch_size, 3), minval=-eta, maxval=eta)
 
 
 def sample_local_points(data_points: Array, std: Array, batch_size: int, key: Array) -> Array:
@@ -50,13 +50,15 @@ def sample_local_points(data_points: Array, std: Array, batch_size: int, key: Ar
     return data_points + normal(key, (batch_size, 3)) * std
 
 
-def get_batch(data: Array, data_std: Array, data_batch_size: int, global_batch_size: int, key: Array) -> tuple[Array, Array]:
+def get_batch(
+    data: Array, data_std: Array, data_batch_size: int, global_batch_size: int, eta: float, key: Array
+) -> tuple[Array, Array]:
     """Get batch of data"""
     data_key, local_key, global_key = split(key, 3)
 
     boundary_points, std = sample_data(data, data_std, data_batch_size, data_key)
     local_points = sample_local_points(boundary_points, std, data_batch_size, local_key)
-    global_points = sample_global_points(global_batch_size, global_key)
+    global_points = sample_global_points(global_batch_size, global_key, eta)
 
     return boundary_points, jnp.concatenate([local_points, global_points], axis=0)
 
@@ -65,6 +67,7 @@ def train(
     params: Params,
     data: Array,
     data_std: Array,
+    eta: float,
     optim: optax.GradientTransformation,
     data_batch_size: int,
     global_batch_size: int,
@@ -88,7 +91,7 @@ def train(
         params, opt_state = carry
         _, key = it
 
-        boundary_points, sample_points = get_batch(data, data_std, data_batch_size, global_batch_size, key)
+        boundary_points, sample_points = get_batch(data, data_std, data_batch_size, global_batch_size, eta, key)
         params, loss = step(
             params=params,
             boundary_points=boundary_points,
@@ -129,6 +132,7 @@ if __name__ == "__main__":
         params=params,
         data=data,
         data_std=data_std,
+        eta=1.1,
         optim=optim,
         data_batch_size=data_batch_size,
         global_batch_size=global_batch_size,
