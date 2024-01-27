@@ -39,7 +39,7 @@ def get_sigma(points: np.ndarray, k: int = 50) -> np.ndarray:
     return d  # shape (n, 1)
 
 
-def create_sphere(n: int = 100_000, data_key=key(0)) -> Array:
+def create_sphere(n: int, data_key: Array) -> Array:
     points = normal(data_key, (n, 3))
     return points / jnp.linalg.norm(points, axis=-1, keepdims=True)
 
@@ -48,7 +48,7 @@ def load_SRB(data_filename: str) -> tuple[Array, Array, Array, float, Array]:
     if data_filename in ["anchor", "daratech", "dc", "gargoyle", "lord_quas"]:
         points, normals = load_ply(REPO_ROOT / f"data/scans/{data_filename}.ply")
     elif data_filename == "sphere":
-        points = np.array(create_sphere())
+        points = np.array(create_sphere(10000, key(0)))
         normals = points.copy()
     else:
         raise ValueError(f"Unknown data filename: {data_filename}")
