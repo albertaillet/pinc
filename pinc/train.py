@@ -22,11 +22,9 @@ def step(
     compute_loss_with_static = partial(compute_loss, static=static)
 
     def batch_loss(params: Params, boundary_points: Array, sample_points: Array) -> Array:
-        boundary_loss = vmap(partial(compute_loss_with_static, params=params, boundary=True))
-        sample_loss = vmap(partial(compute_loss_with_static, params=params, boundary=False))
-        return boundary_loss(x=boundary_points).sum() + sample_loss(x=sample_points).sum() / (
-            len(boundary_points) + len(sample_points)
-        )
+        boundary_loss = vmap(partial(compute_loss_with_static, params, boundary=True))(boundary_points)
+        sample_loss = vmap(partial(compute_loss_with_static, params, boundary=False))(sample_points)
+        return (boundary_loss.sum() + sample_loss.sum()) / (len(boundary_points) + len(sample_points))
 
     loss, grad = value_and_grad(batch_loss)(params, boundary_points, sample_points)
     updates, opt_state = optim.update(grad, opt_state)
@@ -125,7 +123,7 @@ if __name__ == "__main__":
         loss_weights=jnp.array([1, 0.1, 1e-4, 5e-4, 0.1]),
         epsilon=0.1,
     )
-    log_model = lambda params, step: print(f"Eval function at step {step}")
+    log_model = lambda params, step: print(f"Log model run at step {step}")
     log_loss = lambda loss, step: print(f"Loss: {loss:.4f}, Step: {step}")
 
     params, loss = train(
