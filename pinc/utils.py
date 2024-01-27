@@ -21,9 +21,11 @@ def mesh_from_sdf(sdf: Callable, grid_range: float, resolution: int, level: floa
     sd_grid = vmap(sdf)(grid)
     sd_grid_numpy = np.array(sd_grid).reshape(resolution, resolution, resolution)
     try:
-        return marching_cubes(sd_grid_numpy, level)
+        verts, faces, _normals, _values = marching_cubes(sd_grid_numpy, level=level)  # type: ignore
+        verts = verts / resolution * 2 * grid_range - grid_range
     except ValueError:  # no level set crossing
-        return np.zeros((1, 3)), np.zeros((1, 3))
+        verts, faces = np.zeros((1, 3)), np.zeros((1, 3))
+    return verts, faces
 
 
 def scan_eval_log(
@@ -38,13 +40,13 @@ def scan_eval_log(
         @wraps(func)
         def wrapped_log(carry: tuple, x: tuple) -> tuple:
             iter_num, *_ = x
-            model, *_ = carry
+            params, *_ = carry
 
             lax.cond(
                 eval_freq is not None and iter_num % eval_freq == 0,
-                lambda model, iter_num: id_tap(log_eval, (model, iter_num)),
+                lambda params, iter_num: id_tap(log_eval, (params, iter_num)),
                 lambda *args: args,
-                model,
+                params,
                 iter_num,
             )
             out_carry, loss = func(carry, x)
