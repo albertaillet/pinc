@@ -71,7 +71,10 @@ def main(args: argparse.Namespace):
 
     def save_and_log_eval(params: Params, step: int):
         assert not any(jnp.isnan(w).any() or jnp.isnan(b).any() for w, b in params), "NaNs in parameters!"
+        print(f"Saving model at step {step}...")
         save_model(params, experiment_path / f"model_{step}.npz")
+        print(f"Model saved at step {step}.")
+        print(f"Evaluating at step {step}...")
         log_eval(
             params=params,
             points=points,
@@ -83,6 +86,7 @@ def main(args: argparse.Namespace):
             n_eval_samples=args.n_eval_samples,
             step=step,
         )
+        print(f"Evaluation finished at step {step}.")
 
     init_wandb(args)
 
