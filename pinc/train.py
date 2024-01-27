@@ -72,8 +72,10 @@ def train(
 ) -> tuple[Params, Array]:
     """Train the model"""
 
-    def scan_fn(carry: tuple[Params, optax.OptState], key) -> tuple[tuple[Params, optax.OptState], Array]:
+    def scan_fn(carry: tuple[Params, optax.OptState], it) -> tuple[tuple[Params, optax.OptState], Array]:
         params, opt_state = carry
+        _, key = it
+
         boundary_points, sample_points = get_batch(data, data_std, data_batch_size, global_batch_size, key)
         params, loss = step(
             params=params,
@@ -85,7 +87,7 @@ def train(
         )
         return (params, opt_state), loss
 
-    (params, _), loss = lax.scan(scan_fn, (params, optim.init(params)), split(key, num_steps))
+    (params, _), loss = lax.scan(scan_fn, (params, optim.init(params)), (jnp.arange(num_steps), split(key, num_steps)))
     return params, loss
 
 
