@@ -14,7 +14,7 @@ def log_eval(params, points, normals, static, max_coord, center_point, data_file
 
 
 def log_loss(loss, step):
-    print(f"Loss: {loss}, step: {step}")
+    print(f"Loss: {loss:.2f}, step: {step}")
     wandb.log({"loss": loss}, step=step)
 
 
