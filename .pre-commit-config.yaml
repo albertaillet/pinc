@@ -11,4 +11,4 @@ repos:
     rev: v1.1.347
     hooks:
     - id: pyright
-      additional_dependencies: ["jax", "optax", "trimesh", "scikit-image", "plotly"]
+      additional_dependencies: ["jax", "optax", "trimesh", "scikit-image", "plotly", "wandb"]
