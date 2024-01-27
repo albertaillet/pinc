@@ -21,12 +21,13 @@ def step(
     """Compute loss and update parameters"""
     compute_loss_with_static = partial(compute_loss, static=static)
 
-    def batch_loss(params: Params, boundary_points: Array, sample_points: Array) -> Array:
-        boundary_loss = vmap(partial(compute_loss_with_static, params, boundary=True))(boundary_points)
-        sample_loss = vmap(partial(compute_loss_with_static, params, boundary=False))(sample_points)
-        return (boundary_loss.sum() + sample_loss.sum()) / (len(boundary_points) + len(sample_points))
+    def batch_loss(params: Params, boundary_points: Array, sample_points: Array) -> tuple[Array, tuple[Array, Array]]:
+        boundary_loss, boundary_loss_terms = vmap(partial(compute_loss_with_static, params, boundary=True))(boundary_points)
+        sample_loss, sample_loss_terms = vmap(partial(compute_loss_with_static, params, boundary=False))(sample_points)
+        total_loss = (boundary_loss.sum() + sample_loss.sum()) / (len(boundary_points) + len(sample_points))
+        return total_loss, (boundary_loss_terms.mean(axis=0), sample_loss_terms.mean(axis=0))
 
-    loss, grad = value_and_grad(batch_loss)(params, boundary_points, sample_points)
+    (loss, (_boundary_loss_terms, _sample_loss_terms)), grad = value_and_grad(batch_loss)(params, boundary_points, sample_points)
     updates, opt_state = optim.update(grad, opt_state)
     params = optax.apply_updates(params, updates)  # type: ignore
     return params, loss
