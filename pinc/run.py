@@ -9,7 +9,7 @@ from jax.nn import relu
 from jax.random import key, split
 
 from pinc.data import load_SRB
-from pinc.evaluation import init_wandb, log_loss
+from pinc.experiment_logging import init_experiment_logging, log_loss
 from pinc.model import Params, StaticLossArgs, beta_softplus, init_mlp_params, save_model
 from pinc.train import train
 
@@ -53,7 +53,8 @@ def main(args: argparse.Namespace):
     skip_layers = args.mlp_skip_layers
     params = init_mlp_params(layer_sizes, key=init_key, skip_layers=skip_layers)
 
-    optim = optax.adam(optax.piecewise_constant_schedule(args.lr, {2000 * i: 0.99 for i in range(1, args.n_steps // 2000 + 1)}))
+    lr_schedule = optax.piecewise_constant_schedule(args.lr, {2000 * i: 0.99 for i in range(1, args.n_steps // 2000 + 1)})
+    optim = optax.adam(lr_schedule)
 
     # softplus if defined for beta > 0 and approachs relu when beta approaches infinty
     # if beta < 0, then we set it to relu
@@ -75,7 +76,7 @@ def main(args: argparse.Namespace):
         save_model(params, experiment_path / f"model_{step}.npz")
         print(f"Model saved at step {step}.")
 
-    init_wandb(args)
+    init_experiment_logging(args)
 
     print("Starting training...")
     params, loss = train(

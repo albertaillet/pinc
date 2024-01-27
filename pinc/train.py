@@ -6,8 +6,8 @@ import optax
 from jax import Array, lax, value_and_grad, vmap
 from jax.random import choice, key, normal, split
 
+from pinc.experiment_logging import scan_eval_log
 from pinc.model import Params, StaticLossArgs, beta_softplus, compute_loss, init_mlp_params
-from pinc.utils import scan_eval_log
 
 
 def step(

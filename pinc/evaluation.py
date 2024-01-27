@@ -1,7 +1,6 @@
 import jax.numpy as jnp
 import trimesh
 
-import wandb
 from pinc.data import REPO_ROOT
 from pinc.distance import mesh_distances
 from pinc.model import mlp_forward
@@ -27,19 +26,3 @@ def eval_step(params, points, normals, static, max_coord, center_point, data_fil
         distances = dict()
 
     return dict(normal_consistency=normal_consistency, **distances)
-
-
-def log_eval(params, points, normals, static, max_coord, center_point, data_filename, n_eval_samples, step):
-    metrics = eval_step(params, points, normals, static, max_coord, center_point, data_filename, n_eval_samples)
-    wandb.log(metrics, step=step)
-
-
-def log_loss(loss, step):
-    print(f"Loss: {loss}, step: {step}")
-    wandb.log({"loss": loss}, step=step)
-
-
-def init_wandb(args, **kwargs) -> None:
-    print("Initializing wandb...")
-    wandb.init(project="pinc", entity="reproducibility-challenge", config=vars(args), **kwargs)
-    print("Wandb initialized.")

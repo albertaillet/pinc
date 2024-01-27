@@ -39,7 +39,7 @@ def get_sigma(points: np.ndarray, k: int = 50) -> np.ndarray:
     return d  # shape (n, 1)
 
 
-def create_sphere(n: int = 1000, data_key=key(0)) -> Array:
+def create_sphere(n: int = 100_000, data_key=key(0)) -> Array:
     points = normal(data_key, (n, 3))
     return points / jnp.linalg.norm(points, axis=-1, keepdims=True)
 
