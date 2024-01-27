@@ -3,11 +3,9 @@ from typing import Callable, Optional
 
 import jax.numpy as jnp
 import optax
-import wandb
 from jax import Array, lax, value_and_grad, vmap
 from jax.random import choice, key, normal, split
 
-from pinc.evaluation import log_loss
 from pinc.model import Params, StaticLossArgs, beta_softplus, compute_loss, init_mlp_params
 from pinc.utils import scan_eval_log
 
@@ -72,7 +70,8 @@ def train(
     global_batch_size: int,
     num_steps: int,
     static: StaticLossArgs,
-    eval_fn: Callable,
+    log_eval_fn: Callable,
+    log_loss_fn: Callable,
     eval_freq: Optional[int],
     loss_freq: Optional[int],
     key: Array,
@@ -82,8 +81,8 @@ def train(
     @scan_eval_log(
         eval_freq=eval_freq,
         loss_freq=loss_freq,
-        log_eval=lambda args, _: eval_fn(params=args[0], step=args[1]),
-        log_loss=lambda args, _: log_loss(loss=args[0], step=args[1]),
+        log_eval=lambda args, _: log_eval_fn(params=args[0], step=args[1]),
+        log_loss=lambda args, _: log_loss_fn(loss=args[0], step=args[1]),
     )
     def scan_fn(carry: tuple[Params, optax.OptState], it) -> tuple[tuple[Params, optax.OptState], Array]:
         params, opt_state = carry
@@ -116,8 +115,6 @@ if __name__ == "__main__":
     data = data / jnp.linalg.norm(data, axis=-1, keepdims=True)
     data_std = jnp.ones_like(data) * 0.1
 
-    wandb.init(project="pinc", entity="reproducibility-challenge")
-
     static = StaticLossArgs(
         activation=partial(beta_softplus, beta=100.0),
         F=lambda x: x / 3,
@@ -125,7 +122,8 @@ if __name__ == "__main__":
         loss_weights=jnp.array([1, 0.1, 1e-4, 5e-4, 0.1]),
         epsilon=0.1,
     )
-    eval_fn = lambda model, step: print(model, step)
+    log_eval_fn = lambda params, step: print(f"Eval function at step {step}")
+    log_loss_fn = lambda loss, step: print(f"Loss: {loss:.4f}, Step: {step}")
 
     params, loss = train(
         params=params,
@@ -136,8 +134,9 @@ if __name__ == "__main__":
         global_batch_size=global_batch_size,
         num_steps=num_steps,
         static=static,
-        eval_fn=eval_fn,
-        eval_freq=None,
+        log_eval_fn=log_eval_fn,
+        log_loss_fn=log_loss_fn,
+        eval_freq=33,
         loss_freq=10,
         key=train_key,
     )
