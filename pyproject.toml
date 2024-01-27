@@ -10,7 +10,8 @@ dependencies = [
     "scikit-image==0.22.0",
     "trimesh==4.0.9",
     "plotly==5.18.0",
-    "pre-commit==3.6.0"
+    "pre-commit==3.6.0",
+    "wandb==0.16.2"
 ]
 
 [build-system]
