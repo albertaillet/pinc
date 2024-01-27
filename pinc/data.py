@@ -48,7 +48,7 @@ def load_SRB(data_filename: str) -> tuple[Array, Array, Array, float, Array]:
     if data_filename in ["anchor", "daratech", "dc", "gargoyle", "lord_quas"]:
         points, normals = load_ply(REPO_ROOT / f"data/scans/{data_filename}.ply")
     elif data_filename == "sphere":
-        points = np.array(create_sphere(10000, key(0)))
+        points = np.array(create_sphere(100_000, key(0)))
         normals = points.copy()
     else:
         raise ValueError(f"Unknown data filename: {data_filename}")

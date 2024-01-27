@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-lint = [
+dev = [
     "pre-commit==3.6.0",
     "pyright==1.1.348",
 ]
