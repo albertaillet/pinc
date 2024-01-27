@@ -37,8 +37,11 @@ def log_eval(params, points, normals, static, max_coord, center_point, data_file
 
 
 def log_loss(loss, step):
+    print(f"Loss: {loss}, step: {step}")
     wandb.log({"loss": loss}, step=step)
 
 
 def init_wandb(args, **kwargs) -> None:
+    print("Initializing wandb...")
     wandb.init(project="pinc", entity="reproducibility-challenge", config=vars(args), **kwargs)
+    print("Wandb initialized.")
