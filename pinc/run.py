@@ -1,7 +1,5 @@
 import argparse
-import datetime
 from functools import partial
-from pathlib import Path
 
 import jax.numpy as jnp
 import optax
@@ -51,8 +49,7 @@ def main(args: argparse.Namespace):
     init_key, train_key = split(key(args.seed), 2)
 
     layer_sizes = [3] + [args.mlp_hidden_dim] * args.mlp_n_layers + [7]
-    skip_layers = args.mlp_skip_layers
-    params = init_mlp_params(layer_sizes, key=init_key, skip_layers=skip_layers)
+    params = init_mlp_params(layer_sizes, key=init_key, skip_layers=args.mlp_skip_layers)
 
     lr_schedule = optax.piecewise_constant_schedule(args.lr, {2000 * i: 0.99 for i in range(1, args.n_steps // 2000 + 1)})
     optim = optax.adam(lr_schedule)
@@ -62,25 +59,23 @@ def main(args: argparse.Namespace):
     static = StaticLossArgs(
         activation=partial(beta_softplus, beta=args.beta) if args.beta > 0 else relu,
         F=lambda x: x / 3,
-        skip_layers=skip_layers,
+        skip_layers=args.mlp_skip_layers,
         loss_weights=jnp.array(args.loss_weights),
         epsilon=args.epsilon,
     )
 
-    models_path = Path(__file__).resolve().parent.parent / "models"
-    experiment_path = models_path / f"{args.data_filename}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
-    experiment_path.mkdir(parents=True, exist_ok=False)
+    experiment_path = init_experiment_logging(args, mode="offline")
+    model_save_path = experiment_path / "saved_models"
+    model_save_path.mkdir()
 
     def log_save_model(params: Params, step: int):
         assert not any(jnp.isnan(w).any() or jnp.isnan(b).any() for w, b in params), "NaNs in parameters!"
         print(f"Saving model at step {step}...")
-        save_model(params, experiment_path / f"model_{step}.npz")
+        save_model(params, model_save_path / f"model_{step}.npz")
         print(f"Model saved at step {step}.")
 
-    init_experiment_logging(args)
-
     print("Starting training...")
-    params, loss = train(
+    params, _loss = train(
         params=params,
         data=points,
         data_std=data_std,
@@ -96,7 +91,7 @@ def main(args: argparse.Namespace):
         loss_freq=args.loss_freq,
         key=train_key,
     )
-    print(loss)
+    print("Training finished.")
 
 
 if __name__ == "__main__":
