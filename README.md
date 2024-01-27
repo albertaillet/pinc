@@ -8,6 +8,14 @@ The repository contains the code for the reproducibility study of the NeurIPS 20
 pip install -e .
 ```
 
+### Development
+Pre-commit hooks are be used to keep the codebase formatting consitent. Run the following to set it upp
+
+```bash
+pip install -e ".[dev]"  # Install dev dependencies
+pre-commit install
+```
+
 ### Data
 
 The datasets used in the paper are the Surface Reconstruction Benchmark (SRB) and Thingi10K. It is unclear from the paper and the provided how the datasets were obtained.
@@ -20,12 +28,7 @@ We found in the README of [DiGS: Divergence guided shape implicit neural represe
 TODO: Find the data
 
 ## Notes
-### Development
-Pre-commit hooks should be used to keep the codebase formatting consitent. After installing the dependencies, run the following command to install the pre-commit hooks.
 
-```bash
-pre-commit install
-```
 #### Mistake in 50th nearest neighbor calculation
 
 There is probably a mistake in the original code when it comes to the calucaltion of the 50th nearest neightbor.

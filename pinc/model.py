@@ -144,7 +144,7 @@ if __name__ == "__main__":
     static = StaticLossArgs(activation=nn.relu, F=F, skip_layers=skip_layers, loss_weights=loss_weights, epsilon=0.1)
     loss = compute_loss(params, x, boundary=True, static=static)
     print(loss)
-    path = Path(".") / "params.npz"
+    path = Path("test.npz")
     save_model(params, path)
     params = load_model(path)
     out_loaded = mlp_forward(params, x, activation=nn.relu, skip_layers=skip_layers)

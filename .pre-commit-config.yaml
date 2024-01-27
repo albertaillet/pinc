@@ -11,4 +11,4 @@ repos:
     rev: v1.1.348
     hooks:
     - id: pyright
-      additional_dependencies: ["jax", "optax", "trimesh", "scikit-image", "plotly", "wandb"]
+      language: system  # to not have to create another environment with jax
