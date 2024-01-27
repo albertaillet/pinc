@@ -2,11 +2,18 @@ from functools import partial
 
 import jax.numpy as jnp
 import optax
+import wandb
 from jax import Array, lax, value_and_grad, vmap
 from jax.random import choice, key, normal, split
-import wandb
 
-from pinc.model import Params, StaticLossArgs, beta_softplus, compute_loss, init_mlp_params
+from pinc.model import (
+    Params,
+    StaticLossArgs,
+    beta_softplus,
+    compute_loss,
+    init_mlp_params,
+)
+from pinc.utils import scan_eval_log
 
 
 def step(
@@ -49,7 +56,13 @@ def sample_local_points(data_points: Array, std: Array, batch_size: int, key: Ar
     return data_points + normal(key, (batch_size, 3)) * std
 
 
-def get_batch(data: Array, data_std: Array, data_batch_size: int, global_batch_size: int, key: Array) -> tuple[Array, Array]:
+def get_batch(
+    data: Array,
+    data_std: Array,
+    data_batch_size: int,
+    global_batch_size: int,
+    key: Array,
+) -> tuple[Array, Array]:
     """Get batch of data"""
     data_key, local_key, global_key = split(key, 3)
 
@@ -74,7 +87,7 @@ def train(
     """Train the model"""
 
     @scan_eval_log(
-        eval_freq=10,
+        eval_freq=None,
         loss_freq=10,
         log_eval=lambda x, _: wandb.log({"eval": x[0]}, step=x[1]),
         log_loss=lambda x, _: wandb.log({"loss": x[0]}, step=x[1]),
@@ -94,7 +107,11 @@ def train(
         )
         return (params, opt_state), loss
 
-    (params, _), loss = lax.scan(scan_fn, (params, optim.init(params)), (jnp.arange(num_steps), split(key, num_steps)))
+    (params, _), loss = lax.scan(
+        scan_fn,
+        (params, optim.init(params)),
+        (jnp.arange(num_steps), split(key, num_steps)),
+    )
     return params, loss
 
 
@@ -111,7 +128,7 @@ if __name__ == "__main__":
     data_std = jnp.ones_like(data) * 0.1
 
     wandb.init(project="test")
-    
+
     static = StaticLossArgs(
         activation=partial(beta_softplus, beta=100.0),
         F=lambda x: x / 3,
