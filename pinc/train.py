@@ -70,8 +70,8 @@ def train(
     global_batch_size: int,
     num_steps: int,
     static: StaticLossArgs,
-    log_eval_fn: Callable,
-    log_loss_fn: Callable,
+    log_model: Callable,
+    log_loss: Callable,
     eval_freq: Optional[int],
     loss_freq: Optional[int],
     key: Array,
@@ -81,8 +81,8 @@ def train(
     @scan_eval_log(
         eval_freq=eval_freq,
         loss_freq=loss_freq,
-        log_eval=lambda args, _: log_eval_fn(params=args[0], step=args[1]),
-        log_loss=lambda args, _: log_loss_fn(loss=args[0], step=args[1]),
+        log_model=lambda args, _: log_model(params=args[0], step=args[1]),
+        log_loss=lambda args, _: log_loss(loss=args[0], step=args[1]),
     )
     def scan_fn(carry: tuple[Params, optax.OptState], it) -> tuple[tuple[Params, optax.OptState], Array]:
         params, opt_state = carry
@@ -122,8 +122,8 @@ if __name__ == "__main__":
         loss_weights=jnp.array([1, 0.1, 1e-4, 5e-4, 0.1]),
         epsilon=0.1,
     )
-    log_eval_fn = lambda params, step: print(f"Eval function at step {step}")
-    log_loss_fn = lambda loss, step: print(f"Loss: {loss:.4f}, Step: {step}")
+    log_model = lambda params, step: print(f"Eval function at step {step}")
+    log_loss = lambda loss, step: print(f"Loss: {loss:.4f}, Step: {step}")
 
     params, loss = train(
         params=params,
@@ -134,8 +134,8 @@ if __name__ == "__main__":
         global_batch_size=global_batch_size,
         num_steps=num_steps,
         static=static,
-        log_eval_fn=log_eval_fn,
-        log_loss_fn=log_loss_fn,
+        log_model=log_model,
+        log_loss=log_loss,
         eval_freq=33,
         loss_freq=10,
         key=train_key,

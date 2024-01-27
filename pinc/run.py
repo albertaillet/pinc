@@ -9,7 +9,7 @@ from jax.nn import relu
 from jax.random import key, split
 
 from pinc.data import load_SRB
-from pinc.evaluation import init_wandb, log_eval, log_loss
+from pinc.evaluation import init_wandb, log_loss
 from pinc.model import Params, StaticLossArgs, beta_softplus, init_mlp_params, save_model
 from pinc.train import train
 
@@ -46,7 +46,7 @@ def get_args() -> argparse.Namespace:
 def main(args: argparse.Namespace):
     print("Initializing...")
 
-    points, normals, data_std, max_coord, center_point = load_SRB(args.data_filename)
+    points, _normals, data_std, _max_coord, _center_point = load_SRB(args.data_filename)
     init_key, train_key = split(key(args.seed), 2)
 
     layer_sizes = [3] + [args.mlp_hidden_dim] * args.mlp_n_layers + [7]
@@ -69,24 +69,11 @@ def main(args: argparse.Namespace):
     experiment_path = models_path / f"{args.data_filename}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
     experiment_path.mkdir(parents=True, exist_ok=False)
 
-    def save_and_log_eval(params: Params, step: int):
+    def log_save_model(params: Params, step: int):
         assert not any(jnp.isnan(w).any() or jnp.isnan(b).any() for w, b in params), "NaNs in parameters!"
         print(f"Saving model at step {step}...")
         save_model(params, experiment_path / f"model_{step}.npz")
         print(f"Model saved at step {step}.")
-        print(f"Evaluating at step {step}...")
-        log_eval(
-            params=params,
-            points=points,
-            normals=normals,
-            static=static,
-            max_coord=max_coord,
-            center_point=center_point,
-            data_filename=args.data_filename,
-            n_eval_samples=args.n_eval_samples,
-            step=step,
-        )
-        print(f"Evaluation finished at step {step}.")
 
     init_wandb(args)
 
@@ -100,8 +87,8 @@ def main(args: argparse.Namespace):
         global_batch_size=args.global_batch_size,
         num_steps=args.n_steps,
         static=static,
-        log_eval_fn=save_and_log_eval,
-        log_loss_fn=log_loss,
+        log_model=log_save_model,
+        log_loss=log_loss,
         eval_freq=args.eval_freq,
         loss_freq=args.loss_freq,
         key=train_key,
