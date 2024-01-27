@@ -1,11 +1,25 @@
 from functools import wraps
+from pathlib import Path
+from time import time
 from typing import Callable, Optional
 
 from jax import lax
 from jax.experimental.host_callback import id_tap
 
 import wandb
+from pinc.data import REPO_ROOT
 from pinc.evaluation import eval_step
+
+TIME_LAST_LOG_LOSS = time()
+
+
+def log_loss(loss, step):
+    global TIME_LAST_LOG_LOSS
+    new_time = time()
+    steps_time = new_time - TIME_LAST_LOG_LOSS
+    print(f"Loss: {loss:.4f}, step: {step}, time: {steps_time:.2f}")
+    TIME_LAST_LOG_LOSS = new_time
+    wandb.log({"loss": loss}, step=step)
 
 
 def log_eval(params, points, normals, static, max_coord, center_point, data_filename, n_eval_samples, step):
@@ -13,15 +27,11 @@ def log_eval(params, points, normals, static, max_coord, center_point, data_file
     wandb.log(metrics, step=step)
 
 
-def log_loss(loss, step):
-    print(f"Loss: {loss:.2f}, step: {step}")
-    wandb.log({"loss": loss}, step=step)
-
-
-def init_experiment_logging(args, **kwargs) -> None:
+def init_experiment_logging(args, **kwargs) -> Path:
     print("Initializing experiment logging...")
-    wandb.init(project="pinc", entity="reproducibility-challenge", config=vars(args), **kwargs)
+    run = wandb.init(project="pinc", entity="reproducibility-challenge", config=vars(args), dir=REPO_ROOT, **kwargs)
     print("Experiment logging initialized.")
+    return Path(run.dir)  # type: ignore
 
 
 def scan_eval_log(
