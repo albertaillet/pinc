@@ -4,6 +4,7 @@ import jax.numpy as jnp
 import optax
 from jax import Array, lax, value_and_grad, vmap
 from jax.random import choice, key, normal, split
+import wandb
 
 from pinc.model import Params, StaticLossArgs, beta_softplus, compute_loss, init_mlp_params
 
@@ -72,6 +73,12 @@ def train(
 ) -> tuple[Params, Array]:
     """Train the model"""
 
+    @scan_eval_log(
+        eval_freq=10,
+        loss_freq=10,
+        log_eval=lambda x, _: wandb.log({"eval": x[0]}, step=x[1]),
+        log_loss=lambda x, _: wandb.log({"loss": x[0]}, step=x[1]),
+    )
     def scan_fn(carry: tuple[Params, optax.OptState], it) -> tuple[tuple[Params, optax.OptState], Array]:
         params, opt_state = carry
         _, key = it
@@ -103,6 +110,8 @@ if __name__ == "__main__":
     data = data / jnp.linalg.norm(data, axis=-1, keepdims=True)
     data_std = jnp.ones_like(data) * 0.1
 
+    wandb.init(project="test")
+    
     static = StaticLossArgs(
         activation=partial(beta_softplus, beta=100.0),
         F=lambda x: x / 3,
