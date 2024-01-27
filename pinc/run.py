@@ -1,15 +1,16 @@
 import argparse
+import datetime
 from functools import partial
+from pathlib import Path
 
 import jax.numpy as jnp
 import optax
-import wandb
 from jax.nn import relu
 from jax.random import key, split
 
 from pinc.data import load_SRB
-from pinc.evaluation import log_eval
-from pinc.model import StaticLossArgs, beta_softplus, init_mlp_params
+from pinc.evaluation import init_wandb, log_eval, log_loss
+from pinc.model import Params, StaticLossArgs, beta_softplus, init_mlp_params, save_model
 from pinc.train import train
 
 
@@ -24,14 +25,15 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("-e", "--epsilon", type=float, default=0.1, help="Epsilon parameter for delta_e.")
     parser.add_argument("-s", "--seed", type=int, default=0, help="Random seed.")
 
-    parser.add_argument("-n", "--n-steps", type=int, default=1000, help="Number of training steps.")  # 100_000 in paper
-    parser.add_argument("-bs", "--data-batch-size", type=int, default=128, help="Batch size.")  # 16384 in paper
+    parser.add_argument("-n", "--n-steps", type=int, default=100_000, help="Number of training steps.")
+    parser.add_argument("-bs", "--data-batch-size", type=int, default=16384, help="Batch size.")
 
     parser.add_argument("-hd", "--mlp-hidden-dim", type=int, default=512, help="Hidden dimension of MLP.")
     parser.add_argument("-nl", "--mlp-n-layers", type=int, default=7, help="Number of layers in MLP.")
     parser.add_argument("-sl", "--mlp-skip-layers", type=int, nargs="+", default=[4], help="Layers for skip connections.")
-    parser.add_argument("-ef", "--eval-freq", type=int, default=1, help="Frequency of evaluation.")
-    parser.add_argument("-lf", "--loss-freq", type=int, default=1, help="Frequency of logging loss.")
+
+    parser.add_argument("-ef", "--eval-freq", type=int, default=5000, help="Frequency of evaluation.")
+    parser.add_argument("-lf", "--loss-freq", type=int, default=100, help="Frequency of logging loss.")
     parser.add_argument("-nes", "--n-eval-samples", type=int, default=100, help="Number of samples for evaluation.")  # 10^6 paper
 
     args = parser.parse_args()
@@ -63,18 +65,27 @@ def main(args: argparse.Namespace):
         epsilon=args.epsilon,
     )
 
-    eval_fn = partial(
-        log_eval,
-        points=points,
-        normals=normals,
-        static=static,
-        max_coord=max_coord,
-        center_point=center_point,
-        data_filename=args.data_filename,
-        n_eval_samples=args.n_eval_samples,
-    )
+    models_path = Path(__file__).resolve().parent.parent / "models"
+    experiment_path = models_path / f"{args.data_filename}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+    experiment_path.mkdir(parents=True, exist_ok=False)
 
-    wandb.init(project="pinc", entity="reproducibility-challenge")
+    def save_and_log_eval(params: Params, step: int):
+        assert not any(jnp.isnan(w).any() or jnp.isnan(b).any() for w, b in params), "NaNs in parameters!"
+        save_model(params, experiment_path / f"model_{step}.npz")
+        log_eval(
+            params=params,
+            points=points,
+            normals=normals,
+            static=static,
+            max_coord=max_coord,
+            center_point=center_point,
+            data_filename=args.data_filename,
+            n_eval_samples=args.n_eval_samples,
+            step=step,
+        )
+
+    init_wandb(args)
+
     print("Starting training...")
     params, loss = train(
         params=params,
@@ -85,7 +96,8 @@ def main(args: argparse.Namespace):
         global_batch_size=args.global_batch_size,
         num_steps=args.n_steps,
         static=static,
-        eval_fn=eval_fn,
+        log_eval_fn=save_and_log_eval,
+        log_loss_fn=log_loss,
         eval_freq=args.eval_freq,
         loss_freq=args.loss_freq,
         key=train_key,
