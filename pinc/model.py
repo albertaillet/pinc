@@ -118,7 +118,7 @@ def compute_loss(
         jnp.square(curl_G_tilde).sum(),  # loss function for curl
         delta_e(sdf, epsilon) * jnp.linalg.norm(grad_sdf),  # loss function for area
     ])
-    return loss_terms @ loss_weights, loss_terms
+    return loss_terms @ loss_weights, loss_terms * loss_weights
 
 
 def save_model(params: Params, path: Path) -> None:

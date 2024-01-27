@@ -34,6 +34,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("-ef", "--eval-freq", type=int, default=5000, help="Frequency of evaluation.")
     parser.add_argument("-lf", "--loss-freq", type=int, default=100, help="Frequency of logging loss.")
     parser.add_argument("-nes", "--n-eval-samples", type=int, default=100, help="Number of samples for evaluation.")  # 10^6 paper
+    parser.add_argument("-m", "--wandb-mode", type=str, default="offline", help="The logging mode for wandb.")
 
     args = parser.parse_args()
     assert len(args.loss_weights) == 5
@@ -46,7 +47,7 @@ def main(args: argparse.Namespace):
     print("Initializing...")
 
     points, _normals, data_std, _max_coord, _center_point = load_SRB(args.data_filename)
-    init_key, train_key = split(key(args.seed), 2)
+    init_key, train_key = split(key(args.seed))
 
     layer_sizes = [3] + [args.mlp_hidden_dim] * args.mlp_n_layers + [7]
     params = init_mlp_params(layer_sizes, key=init_key, skip_layers=args.mlp_skip_layers)
@@ -64,7 +65,7 @@ def main(args: argparse.Namespace):
         epsilon=args.epsilon,
     )
 
-    experiment_path = init_experiment_logging(args, mode="offline")
+    experiment_path = init_experiment_logging(args, mode=args.wandb_mode)
     model_save_path = experiment_path / "saved_models"
     model_save_path.mkdir()
 
