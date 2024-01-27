@@ -31,7 +31,7 @@ def mesh_from_sdf(sdf: Callable, grid_range: float, resolution: int, level: floa
 def scan_eval_log(
     eval_freq: Optional[int],
     loss_freq: Optional[int],
-    log_eval: Callable,
+    log_model: Callable,
     log_loss: Callable,
 ) -> Callable:
     """Decorator that starts eval logging to `body_fun` used in `jax.lax.scan`."""
@@ -44,7 +44,7 @@ def scan_eval_log(
 
             lax.cond(
                 eval_freq is not None and iter_num % eval_freq == 0,
-                lambda params, iter_num: id_tap(log_eval, (params, iter_num)),
+                lambda params, iter_num: id_tap(log_model, (params, iter_num)),
                 lambda *args: args,
                 params,
                 iter_num,
@@ -69,17 +69,14 @@ def scan_eval_log(
 if __name__ == "__main__":
     import jax.numpy as jnp
 
-    import wandb
-
-    wandb.init(project="test", mode="offline")
-
     @scan_eval_log(
-        eval_freq=None,
+        eval_freq=25,
         loss_freq=10,
-        log_eval=lambda x, _: wandb.log({"eval": x[0]}, step=x[1]),
-        log_loss=lambda x, _: wandb.log({"loss": x[0]}, step=x[1]),
+        log_model=lambda x, _: print(f"Log model: {x[0]}, step: {x[1]}"),
+        log_loss=lambda x, _: print(f"Log step: {x[0]}, step: {x[1]}"),
     )
     def scan_step(carry, x):
         return (carry[0] + 1,), x[0]
 
-    lax.scan(scan_step, (0,), (jnp.arange(100), jnp.arange(100)))
+    n_steps = 100
+    lax.scan(scan_step, (0,), (jnp.arange(n_steps), jnp.arange(n_steps)))
