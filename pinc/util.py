@@ -1,8 +1,7 @@
-from jax import lax, debug, jit
+from collections.abc import Callable
 from functools import wraps
 
-# typing
-from collections.abc import Callable
+from jax import debug, jit, lax
 
 
 def scan_eval_log(frequency: int, eval_: Callable, log: Callable) -> Callable:
