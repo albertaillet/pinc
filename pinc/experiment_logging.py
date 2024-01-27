@@ -1,6 +1,5 @@
 from functools import wraps
 from pathlib import Path
-from time import time
 from typing import Callable, Optional
 
 from jax import lax
@@ -10,16 +9,22 @@ import wandb
 from pinc.data import REPO_ROOT
 from pinc.evaluation import eval_step
 
-TIME_LAST_LOG_LOSS = time()
-
 
 def log_loss(loss, step):
-    global TIME_LAST_LOG_LOSS
-    new_time = time()
-    steps_time = new_time - TIME_LAST_LOG_LOSS
-    print(f"Loss: {loss:.4f}, step: {step}, time: {steps_time:.2f}")
-    TIME_LAST_LOG_LOSS = new_time
-    wandb.log({"loss": loss}, step=step)
+    print(f"Loss: {loss[0]:.4f}, step: {step}")
+
+    def losses_to_dict(losses):
+        return {
+            "loss_sdf": losses[0],
+            "loss_grad": losses[1],
+            "loss_G": losses[2],
+            "loss_curl": losses[3],
+            "loss_area": losses[4],
+        }
+
+    wandb.log(
+        {"loss": loss[0], **{"boundary_loss": losses_to_dict(loss[1][0]), "sample_loss": losses_to_dict(loss[1][0])}}, step=step
+    )
 
 
 def log_eval(params, points, normals, static, max_coord, center_point, data_filename, n_eval_samples, step):

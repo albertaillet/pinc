@@ -9,6 +9,8 @@ from jax.random import choice, key, normal, split, uniform
 from pinc.experiment_logging import scan_eval_log
 from pinc.model import Params, StaticLossArgs, beta_softplus, compute_loss, init_mlp_params
 
+Losses = tuple[Array, tuple[Array, Array]]
+
 
 def step(
     params: Params,
@@ -17,7 +19,7 @@ def step(
     opt_state: optax.OptState,
     optim: optax.GradientTransformation,
     static: StaticLossArgs,
-) -> tuple[Params, Array]:
+) -> tuple[Params, Losses]:
     """Compute loss and update parameters"""
     compute_loss_with_static = partial(compute_loss, static=static)
 
@@ -27,7 +29,7 @@ def step(
         total_loss = (boundary_loss.sum() + sample_loss.sum()) / (len(boundary_points) + len(sample_points))
         return total_loss, (boundary_loss_terms.mean(axis=0), sample_loss_terms.mean(axis=0))
 
-    (loss, (_boundary_loss_terms, _sample_loss_terms)), grad = value_and_grad(batch_loss)(params, boundary_points, sample_points)
+    loss, grad = value_and_grad(batch_loss, has_aux=True)(params, boundary_points, sample_points)
     updates, opt_state = optim.update(grad, opt_state)
     params = optax.apply_updates(params, updates)  # type: ignore
     return params, loss
@@ -77,7 +79,7 @@ def train(
     eval_freq: Optional[int],
     loss_freq: Optional[int],
     key: Array,
-) -> tuple[Params, Array]:
+) -> tuple[Params, Losses]:
     """Train the model"""
 
     @scan_eval_log(
@@ -86,7 +88,7 @@ def train(
         log_model=lambda args, _: log_model(params=args[0], step=args[1]),
         log_loss=lambda args, _: log_loss(loss=args[0], step=args[1]),
     )
-    def scan_fn(carry: tuple[Params, optax.OptState], it) -> tuple[tuple[Params, optax.OptState], Array]:
+    def scan_fn(carry: tuple[Params, optax.OptState], it) -> tuple[tuple[Params, optax.OptState], Losses]:
         params, opt_state = carry
         _, key = it
 
@@ -125,7 +127,9 @@ if __name__ == "__main__":
         epsilon=0.1,
     )
     log_model = lambda params, step: print(f"Log model run at step {step}")
-    log_loss = lambda loss, step: print(f"Loss: {loss:.4f}, Step: {step}")
+    log_loss = lambda loss, step: print(
+        f"Total loss: {loss[0]:.4f}, Boundary loss: {loss[1][0].sum():.4f}, Sample loss: {loss[1][1].sum():.4f}, Step: {step}"
+    )
 
     params, loss = train(
         params=params,
