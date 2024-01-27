@@ -107,18 +107,18 @@ def compute_loss(
     x: Array,
     boundary: bool,
     static: StaticLossArgs,
-) -> Array:
+) -> tuple[Array, Array]:
     """Compute the loss function on one data point."""
     activation, F, skip_layers, loss_weights, epsilon = static
     sdf, grad_sdf, G, G_tilde, curl_G_tilde = get_variables(params, x, activation, F, skip_layers)
-    loss = jnp.array([
-        jnp.abs(sdf) * boundary,  # loss function for sdf
+    loss_terms = jnp.array([
+        jnp.abs(sdf) * boundary,  # loss function for sdf (should only be computed on the boundary)
         jnp.square(grad_sdf - G).sum(),  # loss function for grad
         jnp.square(G - G_tilde).sum(),  # loss function for G
         jnp.square(curl_G_tilde).sum(),  # loss function for curl
         delta_e(sdf, epsilon) * jnp.linalg.norm(grad_sdf),  # loss function for area
     ])
-    return loss @ loss_weights
+    return loss_terms @ loss_weights, loss_terms
 
 
 def save_model(params: Params, path: Path) -> None:
@@ -136,14 +136,14 @@ if __name__ == "__main__":
     skip_layers = [4]
     params = init_mlp_params(layer_sizes, key=key(0), skip_layers=skip_layers)
     loss_weights = jnp.array([1, 0.1, 1e-4, 1e-4, 0.1])
-    x = jnp.arange(3, dtype=jnp.float32)
+    x = jnp.array([0.2, 0.1, 0.3])
     out = mlp_forward(params, x, activation=nn.relu, skip_layers=skip_layers)
     print(out)
     assert out.shape == (7,)
     F = lambda x: x / 3
     static = StaticLossArgs(activation=nn.relu, F=F, skip_layers=skip_layers, loss_weights=loss_weights, epsilon=0.1)
-    loss = compute_loss(params, x, boundary=True, static=static)
-    print(loss)
+    loss, loss_terms = compute_loss(params, x, boundary=True, static=static)
+    print(loss, loss_terms)
     path = Path("test.npz")
     save_model(params, path)
     params = load_model(path)
