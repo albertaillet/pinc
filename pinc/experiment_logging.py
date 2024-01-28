@@ -1,3 +1,4 @@
+import json
 from functools import wraps
 from pathlib import Path
 from typing import Callable, Optional
@@ -39,9 +40,14 @@ def log_eval(params, points, normals, static, max_coord, center_point, data_file
 
 def init_experiment_logging(args, **kwargs) -> Path:
     print("Initializing experiment logging...")
-    run = wandb.init(project="pinc", entity="reproducibility-challenge", config=vars(args), dir=REPO_ROOT, **kwargs)
+    config = vars(args)
+    run = wandb.init(project="pinc", entity="reproducibility-challenge", config=config, dir=REPO_ROOT, **kwargs)
+    experiment_dir = Path(run.dir)  # type: ignore
+    assert experiment_dir.exists()
+    with (experiment_dir / "config.json").open("w+") as f:
+        json.dump(config, f)
     print("Experiment logging initialized.")
-    return Path(run.dir)  # type: ignore
+    return experiment_dir
 
 
 def scan_eval_log(
