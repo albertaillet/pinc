@@ -31,8 +31,8 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("-nl", "--mlp-n-layers", type=int, default=7, help="Number of layers in MLP.")
     parser.add_argument("-sl", "--mlp-skip-layers", type=int, nargs="+", default=[4], help="Layers for skip connections.")
 
-    parser.add_argument("-ef", "--eval-freq", type=int, default=5000, help="Frequency of evaluation.")
-    parser.add_argument("-lf", "--loss-freq", type=int, default=100, help="Frequency of logging loss.")
+    parser.add_argument("-mf", "--log-model-freq", type=int, default=5000, help="Frequency of running the model log function.")
+    parser.add_argument("-lf", "--log-loss-freq", type=int, default=100, help="Frequency of logging the loss.")
     parser.add_argument("-nes", "--n-eval-samples", type=int, default=100, help="Number of samples for evaluation.")  # 10^6 paper
     parser.add_argument("-m", "--wandb-mode", type=str, default="offline", help="The logging mode for wandb.")
 
@@ -88,8 +88,8 @@ def main(args: argparse.Namespace):
         static=static,
         log_model=log_save_model,
         log_loss=log_loss,
-        eval_freq=args.eval_freq,
-        loss_freq=args.loss_freq,
+        log_model_freq=args.log_model_freq,
+        log_loss_freq=args.log_loss_freq,
         key=train_key,
     )
     print("Training finished.")
