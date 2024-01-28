@@ -9,10 +9,9 @@ from jax.experimental.host_callback import id_tap
 import wandb
 from pinc.data import REPO_ROOT
 from pinc.evaluation import eval_step
-from pinc.train import Losses
 
 
-def log_loss(losses: Losses, step: int) -> None:
+def log_loss(losses, step: int) -> None:
     loss, (boundary_losses, sample_losses) = losses
 
     def loss_terms_dict(loss_terms: Array) -> dict[str, float]:
@@ -51,8 +50,8 @@ def init_experiment_logging(args, **kwargs) -> Path:
 
 
 def scan_eval_log(
-    eval_freq: Optional[int],
-    loss_freq: Optional[int],
+    log_model_freq: Optional[int],
+    log_loss_freq: Optional[int],
     log_model: Callable,
     log_loss: Callable,
 ) -> Callable:
@@ -65,8 +64,8 @@ def scan_eval_log(
             params, *_ = carry
 
             lax.cond(
-                eval_freq is not None and iter_num % eval_freq == 0,
-                lambda params, iter_num: id_tap(log_model, (params, iter_num)),
+                log_model_freq is not None and iter_num % log_model_freq == 0,
+                lambda params, iter_num: id_tap(lambda args, _: log_model(*args), (params, iter_num)),
                 lambda *args: args,
                 params,
                 iter_num,
@@ -74,8 +73,8 @@ def scan_eval_log(
             out_carry, loss = func(carry, x)
 
             lax.cond(
-                loss_freq is not None and iter_num % loss_freq == 0,
-                lambda loss, iter_num: id_tap(log_loss, (loss, iter_num)),
+                log_loss_freq is not None and iter_num % log_loss_freq == 0,
+                lambda loss, iter_num: id_tap(lambda args, _: log_loss(*args), (loss, iter_num)),
                 lambda *args: args,
                 loss,
                 iter_num,
@@ -92,13 +91,13 @@ if __name__ == "__main__":
     import jax.numpy as jnp
 
     @scan_eval_log(
-        eval_freq=25,
-        loss_freq=10,
-        log_model=lambda x, _: print(f"Log model: {x[0]}, step: {x[1]}"),
-        log_loss=lambda x, _: print(f"Log step: {x[0]}, step: {x[1]}"),
+        log_model_freq=25,
+        log_loss_freq=10,
+        log_model=lambda params, step: print(f"Log model: {params}, step: {step}"),
+        log_loss=lambda losses, step: print(f"Log step: {losses}, step: {step}"),
     )
     def scan_step(carry, x):
-        return (carry[0] + 1,), x[0]
+        return (carry[0] + 7,), x[0]
 
     n_steps = 100
     lax.scan(scan_step, (0,), (jnp.arange(n_steps), jnp.ones(n_steps)))

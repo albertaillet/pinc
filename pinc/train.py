@@ -76,17 +76,17 @@ def train(
     static: StaticLossArgs,
     log_model: Callable,
     log_loss: Callable,
-    eval_freq: Optional[int],
-    loss_freq: Optional[int],
+    log_model_freq: Optional[int],
+    log_loss_freq: Optional[int],
     key: Array,
 ) -> tuple[Params, Losses]:
     """Train the model"""
 
     @scan_eval_log(
-        eval_freq=eval_freq,
-        loss_freq=loss_freq,
-        log_model=lambda args, _: log_model(params=args[0], step=args[1]),
-        log_loss=lambda args, _: log_loss(loss=args[0], step=args[1]),
+        log_model_freq=log_model_freq,
+        log_loss_freq=log_loss_freq,
+        log_model=log_model,
+        log_loss=log_loss,
     )
     def scan_fn(carry: tuple[Params, optax.OptState], it) -> tuple[tuple[Params, optax.OptState], Losses]:
         params, opt_state = carry
@@ -143,8 +143,8 @@ if __name__ == "__main__":
         static=static,
         log_model=log_model,
         log_loss=log_loss,
-        eval_freq=33,
-        loss_freq=10,
+        log_model_freq=33,
+        log_loss_freq=10,
         key=train_key,
     )
     print(loss)
