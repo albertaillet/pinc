@@ -2,29 +2,34 @@ from functools import wraps
 from pathlib import Path
 from typing import Callable, Optional
 
-from jax import lax
+from jax import Array, lax
 from jax.experimental.host_callback import id_tap
 
 import wandb
 from pinc.data import REPO_ROOT
 from pinc.evaluation import eval_step
+from pinc.train import Losses
 
 
-def log_loss(loss, step):
-    print(f"Loss: {loss[0]:.4f}, step: {step}")
+def log_loss(losses: Losses, step: int) -> None:
+    loss, (boundary_losses, sample_losses) = losses
 
-    def losses_to_dict(losses):
+    def loss_terms_dict(loss_terms: Array) -> dict[str, float]:
+        loss_sdf, loss_grad, loss_G, loss_curl, loss_area = loss_terms
         return {
-            "loss_sdf": losses[0],
-            "loss_grad": losses[1],
-            "loss_G": losses[2],
-            "loss_curl": losses[3],
-            "loss_area": losses[4],
+            "loss_sdf": float(loss_sdf),
+            "loss_grad": float(loss_grad),
+            "loss_G": float(loss_G),
+            "loss_curl": float(loss_curl),
+            "loss_area": float(loss_area),
         }
 
-    wandb.log(
-        {"loss": loss[0], **{"boundary_loss": losses_to_dict(loss[1][0]), "sample_loss": losses_to_dict(loss[1][0])}}, step=step
-    )
+    loss = float(loss)
+    loss_sdf, loss_grad, loss_G, loss_curl, loss_area = boundary_losses + sample_losses
+
+    print(f"Losses: {loss:.4f}, {loss_sdf:.3f}, {loss_grad:.3f}, {loss_G:.3f}, {loss_curl:.3f}, {loss_area:.3f}, step: {step:4d}")
+    data = {"loss": loss, "boundary_loss": loss_terms_dict(boundary_losses), "sample_loss": loss_terms_dict(sample_losses)}
+    wandb.log(data, step=step)
 
 
 def log_eval(params, points, normals, static, max_coord, center_point, data_filename, n_eval_samples, step):
