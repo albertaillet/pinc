@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from jax import Array, lax
+from jax.experimental import io_callback
 from jax.experimental.host_callback import id_tap
 
 import wandb
@@ -65,8 +66,8 @@ def scan_eval_log(
 
             lax.cond(
                 log_model_freq is not None and iter_num % log_model_freq == 0,
-                lambda params, iter_num: id_tap(lambda args, _: log_model(*args), (params, iter_num)),
-                lambda *args: args,
+                lambda params, iter_num: io_callback(log_model, None, params, iter_num),
+                lambda *_: None,
                 params,
                 iter_num,
             )
