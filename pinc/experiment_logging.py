@@ -44,7 +44,7 @@ def init_experiment_logging(args, **kwargs) -> Path:
     experiment_dir = Path(run.dir)  # type: ignore
     assert experiment_dir.exists()
     with (experiment_dir / "config.json").open("w+") as f:
-        json.dump(config, f)
+        json.dump(config, f, indent=4)
     print("Experiment logging initialized.")
     return experiment_dir
 

@@ -4,12 +4,12 @@ import trimesh
 from pinc.data import REPO_ROOT
 from pinc.distance import mesh_distances
 from pinc.model import mlp_forward
-from pinc.normal_consistency import computer_normal_consistency
+from pinc.normal_consistency import compute_normal_consistency
 from pinc.utils import mesh_from_sdf
 
 
 def eval_step(params, points, normals, static, max_coord, center_point, data_filename, n_eval_samples):
-    normal_consistency = computer_normal_consistency(points=points, normals=normals, params=params, static=static)
+    normal_consistency = compute_normal_consistency(points=points, normals=normals, params=params, static=static)
 
     def sdf(x: jnp.ndarray) -> jnp.ndarray:
         return mlp_forward(params, x, activation=static.activation, skip_layers=static.skip_layers)[0]

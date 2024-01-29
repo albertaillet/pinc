@@ -6,7 +6,7 @@ import optax
 from jax.nn import relu
 from jax.random import key, split
 
-from pinc.data import load_SRB
+from pinc.data import load_data
 from pinc.experiment_logging import init_experiment_logging, log_loss
 from pinc.model import Params, StaticLossArgs, beta_softplus, init_mlp_params, save_model
 from pinc.train import train
@@ -46,7 +46,7 @@ def get_args() -> argparse.Namespace:
 def main(args: argparse.Namespace):
     print("Initializing...")
 
-    points, _normals, data_std, _max_coord, _center_point = load_SRB(args.data_filename)
+    points, _normals, data_std, _max_coord, _center_point = load_data(args.data_filename)
     init_key, train_key = split(key(args.seed))
 
     layer_sizes = [3] + [args.mlp_hidden_dim] * args.mlp_n_layers + [7]
