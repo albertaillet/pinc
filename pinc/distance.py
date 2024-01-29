@@ -70,6 +70,8 @@ if __name__ == "__main__":
 
     from trimesh import load
 
+    from pinc.data import SRB_FILES
+
     n_in_recon = 10
     n_samples = 10
     random_state = np.random.RandomState(0)
@@ -78,8 +80,7 @@ if __name__ == "__main__":
     recon = Trimesh(vertices=vertices, faces=faces)
 
     repo_root = Path(__file__).resolve().parent.parent
-    names = ["anchor", "daratech", "dc", "gargoyle", "lord_quas"]  # SRB dataset
-    for name in names:
+    for name in SRB_FILES:
         print(name)
 
         scan = load(repo_root / f"data/scans/{name}.ply")
