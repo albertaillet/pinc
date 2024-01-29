@@ -109,6 +109,7 @@ def train(
 
 if __name__ == "__main__":
     from pinc.data import create_sphere
+    from pinc.normal_consistency import compute_normal_consistency
 
     init_key, data_key, train_key = split(key(0), 3)
     layer_sizes = [3] + [512] * 7 + [7]
@@ -134,6 +135,8 @@ if __name__ == "__main__":
 
     def log_model(params: Params, step: int):
         print(f"Log model run at step {step}")
+        nc = compute_normal_consistency(points, normals, params, static)
+        print(f"Normal consistency: {nc:.4f}")
 
     def log_loss(losses: Losses, step: int):
         loss, (boundary_loss, sample_loss) = losses
@@ -141,6 +144,7 @@ if __name__ == "__main__":
         sample_loss = sample_loss @ loss_weights
         print(f"Total loss: {loss:.4f}, Boundary loss: {boundary_loss:.4f}, Sample loss: {sample_loss:.4f}, step: {step}")
 
+    print("Training starting...")
     params, loss = train(
         params=params,
         data=points,
