@@ -7,7 +7,7 @@ from jax.nn import relu
 from jax.random import key, split
 
 from pinc.data import load_SRB
-from pinc.experiment_logging import init_experiment_logging, log_loss
+from pinc.experiment_logging import init_experiment_logging, log_eval, log_loss
 from pinc.model import Params, StaticLossArgs, beta_softplus, init_mlp_params, save_model
 from pinc.train import train
 
@@ -75,6 +75,17 @@ def main(args: argparse.Namespace):
         save_model(params, model_save_path / f"model_{step}.npz")
         print(f"Model saved at step {step}.")
 
+    eval_model = partial(
+        log_eval,
+        points=points,
+        normals=_normals,
+        static=static,
+        max_coord=_max_coord,
+        center_point=_center_point,
+        data_filename=args.data_filename,
+        n_eval_samples=args.n_eval_samples,
+    )
+
     print("Starting training...")
     params, _loss = train(
         params=params,
@@ -86,7 +97,7 @@ def main(args: argparse.Namespace):
         global_batch_size=args.global_batch_size,
         num_steps=args.n_steps,
         static=static,
-        log_model=log_save_model,
+        log_model=eval_model,
         log_loss=log_loss,
         log_model_freq=args.log_model_freq,
         log_loss_freq=args.log_loss_freq,

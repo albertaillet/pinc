@@ -32,7 +32,7 @@ def log_loss(losses, step: int) -> None:
     wandb.log(data, step=step)
 
 
-def log_eval(params, points, normals, static, max_coord, center_point, data_filename, n_eval_samples, step):
+def log_eval(params, step, points, normals, static, max_coord, center_point, data_filename, n_eval_samples):
     metrics = eval_step(params, points, normals, static, max_coord, center_point, data_filename, n_eval_samples)
     wandb.log(metrics, step=step)
 
