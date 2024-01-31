@@ -47,8 +47,9 @@ if __name__ == "__main__":
     from functools import partial
 
     import jax.numpy as jnp
+    import numpy as np
 
-    from pinc.utils import Array, mesh_from_sdf
+    from pinc.utils import Array, mesh_from_sdf_grid, sdf_grid_from_sdf
 
     def sdf_sphere(point: Array, radius: float) -> Array:
         return jnp.linalg.norm(point) - radius
@@ -58,6 +59,7 @@ if __name__ == "__main__":
         return jnp.linalg.norm(q) - tube_radius
 
     sdf = partial(sdf_torus, radius=0.2, tube_radius=0.1)
-    verts, faces, _, _ = mesh_from_sdf(sdf, grid_range=1.5, resolution=40, level=0.0)
+    grid = np.asarray(sdf_grid_from_sdf(sdf, grid_range=1.5, resolution=40))
+    verts, faces = mesh_from_sdf_grid(grid, grid_range=1.5, resolution=40, level=0.0)
     plot_points(verts, title="Torus").show()
     plot_mesh(verts, faces, title="Torus").show()

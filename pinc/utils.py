@@ -12,13 +12,16 @@ def get_grid(grid_range: float, resolution: int) -> Array:
     return jnp.stack(jnp.meshgrid(coords, coords, coords), axis=-1).reshape(-1, 3)
 
 
-def mesh_from_sdf(sdf: Callable, grid_range: float, resolution: int, level: float) -> tuple[np.ndarray, ...]:
-    """Extracts a mesh from an implicit function."""
+def sdf_grid_from_sdf(sdf: Callable, grid_range: float, resolution: int) -> Array:
+    """Returns a grid of signed distances."""
     grid = get_grid(grid_range, resolution)
-    sd_grid = vmap(sdf)(grid)
-    sd_grid_numpy = np.array(sd_grid).reshape(resolution, resolution, resolution)
+    return vmap(sdf)(grid).reshape(resolution, resolution, resolution)
+
+
+def mesh_from_sdf_grid(sdf_grid: np.ndarray, grid_range: float, resolution: int, level: float) -> tuple[np.ndarray, np.ndarray]:
+    """Extracts a mesh from an implicit function."""
     try:
-        verts, faces, _normals, _values = marching_cubes(sd_grid_numpy, level=level)  # type: ignore
+        verts, faces, _normals, _values = marching_cubes(sdf_grid, level=level)  # type: ignore
         verts = verts / resolution * 2 * grid_range - grid_range
     except ValueError:  # no level set crossing
         verts, faces = np.zeros((1, 3)), np.zeros((1, 3))

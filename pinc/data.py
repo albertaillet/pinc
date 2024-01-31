@@ -57,6 +57,13 @@ def load_SRB(data_filename: str) -> tuple[Array, Array, Array, float, Array]:
     return jnp.array(points), jnp.array(normals), jnp.array(data_std), max_coord, jnp.array(center_point)
 
 
+def load_trimesh(data_filename: str) -> tuple[trimesh.PointCloud, trimesh.PointCloud]:
+    ground_truth_mesh = trimesh.load(REPO_ROOT / f"data/ground_truth/{data_filename}.xyz")
+    scan_mesh = trimesh.load(REPO_ROOT / f"data/scans/{data_filename}.ply")
+    assert isinstance(ground_truth_mesh, trimesh.PointCloud) and isinstance(scan_mesh, trimesh.PointCloud)
+    return ground_truth_mesh, scan_mesh
+
+
 if __name__ == "__main__":
     for ply_file in REPO_ROOT.glob("data/scans/*.ply"):
         points, normals = load_ply(ply_file)

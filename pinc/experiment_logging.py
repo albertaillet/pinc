@@ -9,6 +9,7 @@ from jax.experimental.host_callback import id_tap
 import wandb
 from pinc.data import REPO_ROOT
 from pinc.evaluation import eval_step
+from pinc.model import Params, save_model
 
 
 def log_loss(losses, step: int) -> None:
@@ -32,9 +33,10 @@ def log_loss(losses, step: int) -> None:
     wandb.log(data, step=step)
 
 
-def log_eval(params, points, normals, static, max_coord, center_point, data_filename, n_eval_samples, step):
-    metrics = eval_step(params, points, normals, static, max_coord, center_point, data_filename, n_eval_samples)
-    wandb.log(metrics, step=step)
+def log_eval(params, step, points, normals, static, max_coord, center_point, ground_truth_mesh, scan_mesh, n_eval_samples):
+    metrics = eval_step(params, points, normals, static, max_coord, center_point, ground_truth_mesh, scan_mesh, n_eval_samples)
+    # id_tap(lambda args, _: (lambda metrics, step: wandb.log(metrics, step=step))(*args), (metrics, step))
+    id_tap(lambda args, _: (lambda metrics, step: print(metrics, step))(*args), (metrics, step))
 
 
 def init_experiment_logging(args, **kwargs) -> Path:
@@ -45,8 +47,17 @@ def init_experiment_logging(args, **kwargs) -> Path:
     assert experiment_dir.exists()
     with (experiment_dir / "config.json").open("w+") as f:
         json.dump(config, f)
+    model_save_path = experiment_dir / "saved_models"
+    model_save_path.mkdir()
     print("Experiment logging initialized.")
-    return experiment_dir
+    return model_save_path
+
+
+def log_save_model(params: Params, step: int, model_save_path: Path):
+    assert not any(jnp.isnan(w).any() or jnp.isnan(b).any() for w, b in params), "NaNs in parameters!"
+    print(f"Saving model at step {step}...")
+    save_model(params, model_save_path / f"model_{step}.npz")
+    print(f"Model saved at step {step}.")
 
 
 def scan_eval_log(
@@ -65,8 +76,8 @@ def scan_eval_log(
 
             lax.cond(
                 log_model_freq is not None and iter_num % log_model_freq == 0,
-                lambda params, iter_num: id_tap(lambda args, _: log_model(*args), (params, iter_num)),
-                lambda *args: args,
+                log_model,
+                lambda *_: None,
                 params,
                 iter_num,
             )

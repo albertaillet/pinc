@@ -6,9 +6,9 @@ import optax
 from jax.nn import relu
 from jax.random import key, split
 
-from pinc.data import load_SRB
-from pinc.experiment_logging import init_experiment_logging, log_loss
-from pinc.model import Params, StaticLossArgs, beta_softplus, init_mlp_params, save_model
+from pinc.data import load_SRB, load_trimesh
+from pinc.experiment_logging import init_experiment_logging, log_eval, log_loss
+from pinc.model import StaticLossArgs, beta_softplus, init_mlp_params
 from pinc.train import train
 
 
@@ -47,6 +47,8 @@ def main(args: argparse.Namespace):
     print("Initializing...")
 
     points, _normals, data_std, _max_coord, _center_point = load_SRB(args.data_filename)
+    ground_truth_mesh, scan_mesh = load_trimesh(args.data_filename)
+
     init_key, train_key = split(key(args.seed))
 
     layer_sizes = [3] + [args.mlp_hidden_dim] * args.mlp_n_layers + [7]
@@ -69,11 +71,17 @@ def main(args: argparse.Namespace):
     model_save_path = experiment_path / "saved_models"
     model_save_path.mkdir()
 
-    def log_save_model(params: Params, step: int):
-        assert not any(jnp.isnan(w).any() or jnp.isnan(b).any() for w, b in params), "NaNs in parameters!"
-        print(f"Saving model at step {step}...")
-        save_model(params, model_save_path / f"model_{step}.npz")
-        print(f"Model saved at step {step}.")
+    eval_model = partial(
+        log_eval,
+        points=points,
+        normals=_normals,
+        static=static,
+        max_coord=_max_coord,
+        center_point=_center_point,
+        ground_truth_mesh=ground_truth_mesh,
+        scan_mesh=scan_mesh,
+        n_eval_samples=args.n_eval_samples,
+    )
 
     print("Starting training...")
     params, _loss = train(
@@ -86,7 +94,7 @@ def main(args: argparse.Namespace):
         global_batch_size=args.global_batch_size,
         num_steps=args.n_steps,
         static=static,
-        log_model=log_save_model,
+        log_model=eval_model,
         log_loss=log_loss,
         log_model_freq=args.log_model_freq,
         log_loss_freq=args.log_loss_freq,

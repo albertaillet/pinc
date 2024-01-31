@@ -26,18 +26,18 @@ def hausdorff(x: np.ndarray, y: np.ndarray) -> float:
     return np.maximum(directed_hausdorff(x, y), directed_hausdorff(y, x))
 
 
-def distances(x: np.ndarray, y: np.ndarray) -> dict[str, float]:
+def distances(x: np.ndarray, y: np.ndarray) -> dict[str, np.float32]:
     """Computes the Chamfer and Hausdorff distances between two point clouds."""
     # TODO: fix the fact that the distances are calculated multiple times
     return {
-        "chamfer": chamfer(x, y),
-        "directed_chamfer": directed_chamfer(x, y),
-        "hausdorff": hausdorff(x, y),
-        "directed_hausdorff": directed_hausdorff(x, y),
+        "chamfer": np.float32(chamfer(x, y)),
+        "directed_chamfer": np.float32(directed_chamfer(x, y)),
+        "hausdorff": np.float32(hausdorff(x, y)),
+        "directed_hausdorff": np.float32(directed_hausdorff(x, y)),
     }
 
 
-def mesh_distances(recon: Trimesh, gt: PointCloud, scan: PointCloud, n_samples: int) -> dict[str, dict[str, float]]:
+def mesh_distances(recon: Trimesh, gt: PointCloud, scan: PointCloud, n_samples: int) -> dict[str, dict[str, np.float32]]:
     """Computes the distance metrics between a the reconstruction and the ground truth and the scan."""
     # NOTE: it is unclear from the paper if the ground truth and scan are sampled or not
     # We suspect the authors used the code from https://github.com/Chumbyte/DiGS/
