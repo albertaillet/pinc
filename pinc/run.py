@@ -67,9 +67,7 @@ def main(args: argparse.Namespace):
         epsilon=args.epsilon,
     )
 
-    experiment_path = init_experiment_logging(args, mode=args.wandb_mode)
-    model_save_path = experiment_path / "saved_models"
-    model_save_path.mkdir()
+    _model_save_path = init_experiment_logging(args, mode=args.wandb_mode)
 
     eval_model = partial(
         log_eval,
