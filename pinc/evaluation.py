@@ -60,7 +60,6 @@ def eval_step(params, points, normals, static, max_coord, center_point, ground_t
         return mlp_forward(params, x, activation=static.activation, skip_layers=static.skip_layers)[0]
 
     sdf_grid = sdf_grid_from_sdf(sdf, grid_range=GRID_RANGE, resolution=RESOLUTION)
-    # debug.print("{sdf_grid}", sdf_grid=sdf_grid)
     fun = partial(
         cpu_function,
         max_coord=max_coord,
