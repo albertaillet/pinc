@@ -19,7 +19,7 @@ def step(
     opt_state: optax.OptState,
     optim: optax.GradientTransformation,
     static: StaticLossArgs,
-) -> tuple[Params, Losses]:
+) -> tuple[Params, optax.OptState, Losses]:
     """Compute loss and update parameters"""
     compute_loss_with_static = partial(compute_loss, static=static)
 
@@ -32,7 +32,7 @@ def step(
     loss, grad = value_and_grad(batch_loss, has_aux=True)(params, boundary_points, sample_points)
     updates, opt_state = optim.update(grad, opt_state)
     params = optax.apply_updates(params, updates)  # type: ignore
-    return params, loss
+    return params, opt_state, loss
 
 
 def sample_data(data: Array, data_std: Array, batch_size: int, key: Array) -> tuple[Array, Array]:
@@ -93,7 +93,7 @@ def train(
         _, key = it
 
         boundary_points, sample_points = get_batch(data, data_std, data_batch_size, global_batch_size, eta, key)
-        params, loss = step(
+        params, opt_state, loss = step(
             params=params,
             boundary_points=boundary_points,
             sample_points=sample_points,
