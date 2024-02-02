@@ -3,7 +3,7 @@ from typing import Callable, Optional
 
 import jax.numpy as jnp
 import optax
-from jax import Array, lax, value_and_grad, vmap
+from jax import Array, jit, lax, value_and_grad, vmap
 from jax.random import choice, key, normal, split, uniform
 
 from pinc.experiment_logging import scan_eval_log
@@ -79,6 +79,7 @@ def train(
     log_model_freq: Optional[int],
     log_loss_freq: Optional[int],
     key: Array,
+    lax_scan: bool = False,
 ) -> tuple[Params, Losses]:
     """Train the model"""
 
@@ -103,8 +104,29 @@ def train(
         )
         return (params, opt_state), loss
 
-    (params, _), loss = lax.scan(scan_fn, (params, optim.init(params)), (jnp.arange(num_steps), split(key, num_steps)))
+    if lax_scan:
+        (params, _), loss = lax.scan(scan_fn, (params, optim.init(params)), (jnp.arange(num_steps), split(key, num_steps)))
+    else:
+        (params, _), loss = python_scan(scan_fn, (params, optim.init(params)), (jnp.arange(num_steps), split(key, num_steps)))
     return params, loss
+
+
+def python_scan(f: Callable, init, xs):
+    """Python implementation of lax.scan for debugging purposes. WIP."""
+    from jax._src.lax.slicing import index_in_dim
+    from jax.tree_util import tree_flatten, tree_map, tree_unflatten
+
+    f = jit(f)
+    length = len(xs[0])
+    xs_flat, xs_tree = tree_flatten(xs)
+    carry = init
+    ys = []
+    for i in range(length):
+        xs_slice = [index_in_dim(x, i, keepdims=False) for x in xs_flat]
+        carry, y = f(carry, tree_unflatten(xs_tree, xs_slice))
+        ys.append(y)
+    stacked_y = tree_map(lambda *ys: jnp.stack(ys), ys)
+    return carry, stacked_y
 
 
 if __name__ == "__main__":

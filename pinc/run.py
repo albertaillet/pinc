@@ -35,6 +35,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("-lf", "--log-loss-freq", type=int, default=100, help="Frequency of logging the loss.")
     parser.add_argument("-nes", "--n-eval-samples", type=int, default=100, help="Number of samples for evaluation.")  # 10^6 paper
     parser.add_argument("-m", "--wandb-mode", type=str, default="offline", help="The logging mode for wandb.")
+    parser.add_argument("-ls", "--lax-scan", action="store_true", help="Use lax.scan instead of for loop.")
 
     args = parser.parse_args()
     assert len(args.loss_weights) == 5
@@ -91,6 +92,7 @@ def main(args: argparse.Namespace):
         log_model_freq=args.log_model_freq,
         log_loss_freq=args.log_loss_freq,
         key=train_key,
+        lax_scan=args.lax_scan,
     )
     print("Training finished.")
 
