@@ -6,7 +6,7 @@ import optax
 from jax.nn import relu
 from jax.random import key, split
 
-from pinc.data import load_SRB, load_trimesh
+from pinc.data import load_data, load_trimesh
 from pinc.experiment_logging import init_experiment_logging, log_eval, log_loss
 from pinc.model import StaticLossArgs, beta_softplus, init_mlp_params
 from pinc.train import train
@@ -46,7 +46,7 @@ def get_args() -> argparse.Namespace:
 def main(args: argparse.Namespace):
     print("Initializing...")
 
-    points, _normals, data_std, _max_coord, _center_point = load_SRB(args.data_filename)
+    points, _normals, data_std, _max_coord, _center_point = load_data(args.data_filename)
     ground_truth_mesh, scan_mesh = load_trimesh(args.data_filename)
 
     init_key, train_key = split(key(args.seed))
@@ -67,7 +67,9 @@ def main(args: argparse.Namespace):
         epsilon=args.epsilon,
     )
 
-    _model_save_path = init_experiment_logging(args, mode=args.wandb_mode)
+    experiment_path = init_experiment_logging(args, mode=args.wandb_mode)
+    model_save_path = experiment_path / "saved_models"
+    model_save_path.mkdir()
 
     eval_model = partial(
         log_eval,

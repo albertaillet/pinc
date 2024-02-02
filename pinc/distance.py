@@ -65,10 +65,11 @@ def mesh_distances(recon: Trimesh, gt: PointCloud, scan: PointCloud, n_samples: 
 
 
 if __name__ == "__main__":
-    from json import dumps
     from pathlib import Path
 
     from trimesh import load
+
+    from pinc.data import SRB_FILES
 
     n_in_recon = 10
     n_samples = 10
@@ -78,8 +79,7 @@ if __name__ == "__main__":
     recon = Trimesh(vertices=vertices, faces=faces)
 
     repo_root = Path(__file__).resolve().parent.parent
-    names = ["anchor", "daratech", "dc", "gargoyle", "lord_quas"]  # SRB dataset
-    for name in names:
+    for name in SRB_FILES:
         print(name)
 
         scan = load(repo_root / f"data/scans/{name}.ply")
@@ -90,4 +90,4 @@ if __name__ == "__main__":
 
         print(scan.vertices.shape, gt.vertices.shape)
 
-        print(dumps(mesh_distances(recon=recon, gt=gt, scan=scan, n_samples=n_samples), indent=2))
+        print(mesh_distances(recon=recon, gt=gt, scan=scan, n_samples=n_samples))

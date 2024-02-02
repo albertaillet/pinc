@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 from jax import Array, vmap
 
-from pinc.model import Params, StaticLossArgs, get_variables
+from pinc.model import Params, StaticLossArgs, compute_variables
 
 
 def normal_consistency(x: Array, y: Array) -> Array:
@@ -9,13 +9,13 @@ def normal_consistency(x: Array, y: Array) -> Array:
     return jnp.mean(jnp.abs(jnp.sum(x * y, axis=1)))
 
 
-def computer_normal_consistency(points: Array, normals: Array, params: Params, static: StaticLossArgs) -> Array:
+def compute_normal_consistency(points: Array, normals: Array, params: Params, static: StaticLossArgs) -> Array:
     """Computes the normal consistency of a point cloud."""
 
-    def get_G(x: Array) -> Array:
-        return get_variables(params, x, activation=static.activation, F=static.F, skip_layers=static.skip_layers)[2]
+    def compute_G(x: Array) -> Array:
+        return compute_variables(params, x, activation=static.activation, F=static.F, skip_layers=static.skip_layers)[2]
 
-    G = vmap(get_G)(points)
+    G = vmap(compute_G)(points)
     return normal_consistency(G, normals)
 
 
@@ -38,5 +38,5 @@ if __name__ == "__main__":
     points, normals = jnp.array(points), jnp.array(normals)
 
     static = StaticLossArgs(activation=activation, F=F, skip_layers=skip_layers, loss_weights=None, epsilon=None)  # type: ignore
-    nc = computer_normal_consistency(points, normals, params, static)
+    nc = compute_normal_consistency(points, normals, params, static)
     print({"normal_consistency": nc.item()})

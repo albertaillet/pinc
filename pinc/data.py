@@ -8,6 +8,7 @@ from jax.random import key, normal
 from scipy.spatial import cKDTree
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+SRB_FILES = ["anchor", "daratech", "dc", "gargoyle", "lord_quas"]
 
 
 def load_ply(path: Path) -> tuple[np.ndarray, np.ndarray]:
@@ -32,7 +33,7 @@ def process_points(points: np.ndarray) -> tuple[np.ndarray, float, np.ndarray]:
     return points, max_coord, center_point
 
 
-def get_sigma(points: np.ndarray, k: int = 50) -> np.ndarray:
+def compute_sigma(points: np.ndarray, k: int = 50) -> np.ndarray:
     """Caculates the distance to the kth nearest neighbor of each point."""
     tree = cKDTree(points)
     d, _ = tree.query(points, [k + 1])  # k+1 to remove self
@@ -44,8 +45,8 @@ def create_sphere(n: int, data_key: Array) -> Array:
     return points / jnp.linalg.norm(points, axis=-1, keepdims=True)
 
 
-def load_SRB(data_filename: str) -> tuple[Array, Array, Array, float, Array]:
-    if data_filename in ["anchor", "daratech", "dc", "gargoyle", "lord_quas"]:
+def load_data(data_filename: str) -> tuple[Array, Array, Array, float, Array]:
+    if data_filename in SRB_FILES:
         points, normals = load_ply(REPO_ROOT / f"data/scans/{data_filename}.ply")
     elif data_filename == "sphere":
         points = np.array(create_sphere(100_000, key(0)))
@@ -53,7 +54,7 @@ def load_SRB(data_filename: str) -> tuple[Array, Array, Array, float, Array]:
     else:
         raise ValueError(f"Unknown data filename: {data_filename}")
     points, max_coord, center_point = process_points(points)
-    data_std = get_sigma(points)
+    data_std = compute_sigma(points)
     return jnp.array(points), jnp.array(normals), jnp.array(data_std), max_coord, jnp.array(center_point)
 
 
@@ -72,6 +73,6 @@ if __name__ == "__main__":
         print(points.shape, normals.shape)
         points, max_coord, center_point = process_points(points)
         print(points.shape, max_coord, center_point)
-        sigma = get_sigma(points)
+        sigma = compute_sigma(points)
         print(sigma.shape, type(sigma), sigma.dtype)
         break

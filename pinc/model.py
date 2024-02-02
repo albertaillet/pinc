@@ -69,7 +69,7 @@ def curl_from_jacobian(jacobian: Array) -> Array:
     ])
 
 
-def get_variables(params: Params, x: Array, activation: Callable, F: Callable, skip_layers: list[int]) -> tuple[Array, ...]:
+def compute_variables(params: Params, x: Array, activation: Callable, F: Callable, skip_layers: list[int]) -> tuple[Array, ...]:
     """Compute the sdf and auxiliary variables of the PINC model."""
 
     def forward_and_aux(x: Array):
@@ -110,7 +110,7 @@ def compute_loss(
 ) -> tuple[Array, Array]:
     """Compute the loss function on one data point."""
     activation, F, skip_layers, loss_weights, epsilon = static
-    sdf, grad_sdf, G, G_tilde, curl_G_tilde = get_variables(params, x, activation, F, skip_layers)
+    sdf, grad_sdf, G, G_tilde, curl_G_tilde = compute_variables(params, x, activation, F, skip_layers)
     loss_terms = jnp.array([
         jnp.abs(sdf) * boundary,  # loss function for sdf (should only be computed on the boundary)
         jnp.square(grad_sdf - G).sum(),  # loss function for grad

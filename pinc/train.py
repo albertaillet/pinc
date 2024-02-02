@@ -108,6 +108,8 @@ def train(
 
 
 if __name__ == "__main__":
+    from pinc.data import create_sphere
+
     init_key, data_key, train_key = split(key(0), 3)
     layer_sizes = [3] + [512] * 7 + [7]
     skip_layers = [4]
@@ -115,26 +117,34 @@ if __name__ == "__main__":
     params = init_mlp_params(layer_sizes, key=init_key, skip_layers=skip_layers)
     optim = optax.adam(optax.piecewise_constant_schedule(1e-3, {2000 * i: 0.99 for i in range(1, num_steps // 2000 + 1)}))
 
-    data = normal(data_key, (100, 3))
-    data = data / jnp.linalg.norm(data, axis=-1, keepdims=True)
-    data_std = jnp.ones_like(data) * 0.1
+    # Dummy data
+    points = create_sphere(1000, data_key)
+    points = points / jnp.linalg.norm(points, axis=-1, keepdims=True)
+    points_std = jnp.ones_like(points) * 0.1
+    normals = jnp.copy(points)
 
+    loss_weights = jnp.array([1, 0.1, 1e-4, 5e-4, 0.1])
     static = StaticLossArgs(
         activation=partial(beta_softplus, beta=100.0),
         F=lambda x: x / 3,
         skip_layers=skip_layers,
-        loss_weights=jnp.array([1, 0.1, 1e-4, 5e-4, 0.1]),
+        loss_weights=loss_weights,
         epsilon=0.1,
     )
-    log_model = lambda params, step: print(f"Log model run at step {step}")
-    log_loss = lambda loss, step: print(
-        f"Total loss: {loss[0]:.4f}, Boundary loss: {loss[1][0].sum():.4f}, Sample loss: {loss[1][1].sum():.4f}, Step: {step}"
-    )
+
+    def log_model(params: Params, step: int):
+        print(f"Log model run at step {step}")
+
+    def log_loss(losses: Losses, step: int):
+        loss, (boundary_loss, sample_loss) = losses
+        boundary_loss = boundary_loss @ loss_weights
+        sample_loss = sample_loss @ loss_weights
+        print(f"Total loss: {loss:.4f}, Boundary loss: {boundary_loss:.4f}, Sample loss: {sample_loss:.4f}, step: {step}")
 
     params, loss = train(
         params=params,
-        data=data,
-        data_std=data_std,
+        data=points,
+        data_std=points_std,
         eta=1.1,
         optim=optim,
         data_batch_size=data_batch_size,
@@ -147,4 +157,4 @@ if __name__ == "__main__":
         log_loss_freq=10,
         key=train_key,
     )
-    print(loss)
+    print("Training finished.")
