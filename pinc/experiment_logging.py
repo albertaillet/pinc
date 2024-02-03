@@ -46,9 +46,11 @@ def init_experiment_logging(args, **kwargs) -> Path:
     experiment_dir = Path(run.dir)  # type: ignore
     assert experiment_dir.exists()
     with (experiment_dir / "config.json").open("w+") as f:
-        json.dump(config, f, indent=4)
+        json.dump(config, f)
+    model_save_path = experiment_dir / "saved_models"
+    model_save_path.mkdir()
     print("Experiment logging initialized.")
-    return experiment_dir
+    return model_save_path
 
 
 def log_save_model(params: Params, step: int, model_save_path: Path):
@@ -74,8 +76,8 @@ def scan_eval_log(
 
             lax.cond(
                 log_model_freq is not None and iter_num % log_model_freq == 0,
-                lambda params, iter_num: id_tap(lambda args, _: log_model(*args), (params, iter_num)),
-                lambda *args: args,
+                log_model,
+                lambda *_: None,
                 params,
                 iter_num,
             )
