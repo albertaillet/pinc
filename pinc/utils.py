@@ -21,7 +21,7 @@ def sdf_grid_from_sdf(sdf: Callable, grid_range: float, resolution: int) -> Arra
 def mesh_from_sdf_grid(sdf_grid: np.ndarray, grid_range: float, resolution: int, level: float) -> tuple[np.ndarray, np.ndarray]:
     """Extracts a mesh from an implicit function."""
     try:
-        verts, faces, _normals, _values = marching_cubes(sdf_grid, level=sdf_grid.mean())  # type: ignore
+        verts, faces, _normals, _values = marching_cubes(sdf_grid, level=level)  # type: ignore
         verts = verts / resolution * 2 * grid_range - grid_range
     except ValueError as e:
         debug.print("exception: {e}", e=e)

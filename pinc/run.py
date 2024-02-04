@@ -7,7 +7,7 @@ from jax.nn import relu
 from jax.random import key, split
 
 from pinc.data import load_data, load_trimesh
-from pinc.experiment_logging import init_experiment_logging, log_eval, log_loss
+from pinc.experiment_logging import init_experiment_logging, log_eval_model, log_loss, log_save_model
 from pinc.model import StaticLossArgs, beta_softplus, init_mlp_params
 from pinc.train import train
 
@@ -70,7 +70,7 @@ def main(args: argparse.Namespace):
     _model_save_path = init_experiment_logging(args, mode=args.wandb_mode)
 
     eval_model = partial(
-        log_eval,
+        log_eval_model,
         points=points,
         normals=_normals,
         static=static,
@@ -79,8 +79,8 @@ def main(args: argparse.Namespace):
         ground_truth_mesh=ground_truth_mesh,
         scan_mesh=scan_mesh,
         n_eval_samples=args.n_eval_samples,
+        log_save_model_fn=partial(log_save_model, model_save_path=_model_save_path),
     )
-
     print("Starting training...")
     params, _loss = train(
         params=params,

@@ -33,10 +33,25 @@ def log_loss(losses, step: int) -> None:
     wandb.log(data, step=step)
 
 
-def log_eval(params, step, points, normals, static, max_coord, center_point, ground_truth_mesh, scan_mesh, n_eval_samples):
+def log_eval_model(
+    params,
+    step,
+    points,
+    normals,
+    static,
+    max_coord,
+    center_point,
+    ground_truth_mesh,
+    scan_mesh,
+    n_eval_samples,
+    log_save_model_fn,
+):
     metrics = eval_step(params, points, normals, static, max_coord, center_point, ground_truth_mesh, scan_mesh, n_eval_samples)
-    # id_tap(lambda args, _: (lambda metrics, step: wandb.log(metrics, step=step))(*args), (metrics, step))
-    id_tap(lambda args, _: (lambda metrics, step: print(metrics, step))(*args), (metrics, step))
+    # Save Metrics
+    id_tap(lambda args, _: (lambda metrics, step: wandb.log(metrics, step=step))(*args), (metrics, step))
+    # Save Model
+    id_tap(lambda args, _: log_save_model_fn(*args), (params, step))
+    # id_tap(lambda args, _: (lambda metrics, step: print(metrics, step))(*args), (metrics, step))
 
 
 def init_experiment_logging(args, **kwargs) -> Path:
@@ -54,10 +69,7 @@ def init_experiment_logging(args, **kwargs) -> Path:
 
 
 def log_save_model(params: Params, step: int, model_save_path: Path):
-    assert not any(jnp.isnan(w).any() or jnp.isnan(b).any() for w, b in params), "NaNs in parameters!"
-    print(f"Saving model at step {step}...")
     save_model(params, model_save_path / f"model_{step}.npz")
-    print(f"Model saved at step {step}.")
 
 
 def scan_eval_log(
