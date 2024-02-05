@@ -6,6 +6,7 @@ from pathlib import Path
 
 import jax.numpy as jnp
 import trimesh
+from jax import Array
 from jax.nn import relu
 
 from pinc.data import REPO_ROOT, SRB_FILES, load_data
@@ -19,7 +20,9 @@ def get_args() -> argparse.Namespace:
     """Parse command line arguments, if not specified, the default values are the same as in the paper."""
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--run-path", type=Path, help="Path to the run directory.")
-    parser.add_argument("-n", "--n-models", type=int, default=5, help="Number of models to evaluate.")
+    parser.add_argument("-n", "--n-models", type=int, default=None, help="Number of models to evaluate.")
+    parser.add_argument("-r", "--grid-resolution", type=int, default=256, help="Resolution of the grid.")
+    parser.add_argument("-nes", "--n-eval-samples", type=int, default=int(10e6), help="Number of samples for evaluation.")
 
     args = parser.parse_args()
     path: Path = args.run_path.resolve()
@@ -36,30 +39,34 @@ def get_args() -> argparse.Namespace:
 
     model_save_path = path / "saved_models"
     assert model_save_path.is_dir(), f"Model directory {path / 'saved_models'} does not exist!"
-    models = list(reversed(sorted(model_save_path.glob("model_*.npz"))))[: args.n_models]
+    models = list(reversed(sorted(model_save_path.glob("model_*.npz"))))
+    if args.n_models is not None:
+        models = models[: args.n_models]
     assert models, f"No models found in {models}!"
     print(f"Found model {[m.name for m in models]}...")
 
-    args = argparse.Namespace(**config)
-    args.run_id = run_id
-    args.model_save_path = model_save_path
-    args.models = models
-    return args
+    train_args = argparse.Namespace(**config)
+    train_args.run_id = run_id
+    train_args.model_save_path = model_save_path
+    train_args.models = models
+    train_args.grid_resolution = args.grid_resolution
+    train_args.n_eval_samples = args.n_eval_samples
+    return train_args
 
 
-def compute_reconstructed_mesh(params: Params, static: StaticLossArgs, max_coord: float, center_point) -> trimesh.Trimesh:
-    def sdf(x: jnp.ndarray) -> jnp.ndarray:
+def compute_reconstructed_mesh(
+    params: Params, static: StaticLossArgs, max_coord: float, center_point: Array, resolution: int
+) -> trimesh.Trimesh:
+    def sdf(x: Array) -> Array:
         return mlp_forward(params, x, activation=static.activation, skip_layers=static.skip_layers)[0]
 
-    recon_vertices, recon_faces = mesh_from_sdf(sdf, grid_range=1.5, resolution=256, level=0)  # TODO: resolution 256 in paper
+    recon_vertices, recon_faces = mesh_from_sdf(sdf, grid_range=1.5, resolution=resolution, level=0)
     recon_vertices = recon_vertices * max_coord + center_point
     return trimesh.Trimesh(vertices=recon_vertices, faces=recon_faces)
 
 
 def main(args: argparse.Namespace):
     print("Evaluating model...")
-
-    n_eval_samples = 100
 
     points, normals, _data_std, max_coord, center_point = load_data(args.data_filename)
 
@@ -84,7 +91,7 @@ def main(args: argparse.Namespace):
         print(f"Model: {model_path.name}")
         print(f"Normal consistency: {normal_consistency:.4f}")
 
-        recon_mesh = compute_reconstructed_mesh(params, static, max_coord, center_point)
+        recon_mesh = compute_reconstructed_mesh(params, static, max_coord, center_point, args.grid_resolution)
 
         recon_mesh.export(args.model_save_path / f"{model_path.stem}.ply")
 
@@ -95,7 +102,7 @@ def main(args: argparse.Namespace):
             scan_mesh = trimesh.load(REPO_ROOT / f"data/scans/{data_filename}.ply")
             assert isinstance(ground_truth_mesh, trimesh.PointCloud) and isinstance(scan_mesh, trimesh.PointCloud)
 
-            distances = mesh_distances(recon_mesh, ground_truth_mesh, scan_mesh, n_samples=n_eval_samples)
+            distances = mesh_distances(recon_mesh, ground_truth_mesh, scan_mesh, n_samples=args.n_eval_samples)
 
             print(f"Distances: \n {json.dumps(distances, indent=2)}")
 

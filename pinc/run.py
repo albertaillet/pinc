@@ -33,7 +33,6 @@ def get_args() -> argparse.Namespace:
 
     parser.add_argument("-mf", "--log-model-freq", type=int, default=5000, help="Frequency of running the model log function.")
     parser.add_argument("-lf", "--log-loss-freq", type=int, default=100, help="Frequency of logging the loss.")
-    parser.add_argument("-nes", "--n-eval-samples", type=int, default=100, help="Number of samples for evaluation.")  # 10^6 paper
     parser.add_argument("-m", "--wandb-mode", type=str, default="offline", help="The logging mode for wandb.")
 
     args = parser.parse_args()
