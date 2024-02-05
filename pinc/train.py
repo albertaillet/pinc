@@ -15,7 +15,7 @@ Losses = tuple[Array, tuple[Array, Array]]
 def step(
     params: Params,
     boundary_points: Array,
-    sample_points,
+    sample_points: Array,
     opt_state: optax.OptState,
     optim: optax.GradientTransformation,
     static: StaticLossArgs,
