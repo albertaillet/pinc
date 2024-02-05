@@ -23,6 +23,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("-n", "--n-models", type=int, default=None, help="Number of models to evaluate.")
     parser.add_argument("-r", "--grid-resolution", type=int, default=256, help="Resolution of the grid.")
     parser.add_argument("-nes", "--n-eval-samples", type=int, default=int(10e6), help="Number of samples for evaluation.")
+    parser.add_argument("-s", "--seed", type=int, default=0, help="Random seed for sampling.")
 
     args = parser.parse_args()
     path: Path = args.run_path.resolve()
@@ -51,6 +52,7 @@ def get_args() -> argparse.Namespace:
     train_args.models = models
     train_args.grid_resolution = args.grid_resolution
     train_args.n_eval_samples = args.n_eval_samples
+    train_args.seed = args.seed
     return train_args
 
 
@@ -102,7 +104,7 @@ def main(args: argparse.Namespace):
             scan_mesh = trimesh.load(REPO_ROOT / f"data/scans/{data_filename}.ply")
             assert isinstance(ground_truth_mesh, trimesh.PointCloud) and isinstance(scan_mesh, trimesh.PointCloud)
 
-            distances = mesh_distances(recon_mesh, ground_truth_mesh, scan_mesh, n_samples=args.n_eval_samples)
+            distances = mesh_distances(recon_mesh, ground_truth_mesh, scan_mesh, n_samples=args.n_eval_samples, seed=args.seed)
 
             print(f"Distances: \n {json.dumps(distances, indent=2)}")
 
