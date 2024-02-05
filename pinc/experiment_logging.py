@@ -8,7 +8,6 @@ from jax.experimental.host_callback import id_tap
 
 import wandb
 from pinc.data import REPO_ROOT
-from pinc.evaluation import eval_step
 
 
 def log_loss(losses, step: int) -> None:
@@ -30,11 +29,6 @@ def log_loss(losses, step: int) -> None:
     print(f"Losses: {loss:.4f}, {loss_sdf:.3f}, {loss_grad:.3f}, {loss_G:.3f}, {loss_curl:.3f}, {loss_area:.3f}, step: {step:4d}")
     data = {"loss": loss, "boundary_loss": loss_terms_dict(boundary_losses), "sample_loss": loss_terms_dict(sample_losses)}
     wandb.log(data, step=step)
-
-
-def log_eval(params, points, normals, static, max_coord, center_point, data_filename, n_eval_samples, step):
-    metrics = eval_step(params, points, normals, static, max_coord, center_point, data_filename, n_eval_samples)
-    wandb.log(metrics, step=step)
 
 
 def init_experiment_logging(args, **kwargs) -> Path:
