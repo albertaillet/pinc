@@ -16,7 +16,7 @@ from pinc.normal_consistency import compute_normal_consistency
 from pinc.utils import mesh_from_sdf
 
 
-def get_args() -> argparse.Namespace:
+def get_args() -> tuple[argparse.Namespace, argparse.Namespace, list[Path]]:
     """Parse command line arguments, if not specified, the default values are the same as in the paper."""
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--run-path", type=Path, help="Path to the run directory.")
@@ -24,9 +24,10 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("-r", "--grid-resolution", type=int, default=256, help="Resolution of the grid.")
     parser.add_argument("-nes", "--n-eval-samples", type=int, default=int(10e6), help="Number of samples for evaluation.")
     parser.add_argument("-s", "--seed", type=int, default=0, help="Random seed for sampling.")
+    parser.add_argument("-nw", "--n-workers", type=int, default=5, help="Number of workers for distance computation.")
 
-    args = parser.parse_args()
-    path: Path = args.run_path.resolve()
+    eval_args = parser.parse_args()
+    path: Path = eval_args.run_path.resolve()
     assert path.is_dir(), f"Run directory {path} does not exist!"
     results = re.search("run-([0-9]{8})_([0-9]{6})-([a-z0-9]{8})", path.name)
     if results is None:
@@ -41,19 +42,16 @@ def get_args() -> argparse.Namespace:
     model_save_path = path / "saved_models"
     assert model_save_path.is_dir(), f"Model directory {path / 'saved_models'} does not exist!"
     models = list(reversed(sorted(model_save_path.glob("model_*.npz"))))
-    if args.n_models is not None:
-        models = models[: args.n_models]
+    if eval_args.n_models is not None:
+        models = models[: eval_args.n_models]
     assert models, f"No models found in {models}!"
     print(f"Found model {[m.name for m in models]}...")
 
+    eval_args.run_id = run_id
+    eval_args.model_save_path = model_save_path
+
     train_args = argparse.Namespace(**config)
-    train_args.run_id = run_id
-    train_args.model_save_path = model_save_path
-    train_args.models = models
-    train_args.grid_resolution = args.grid_resolution
-    train_args.n_eval_samples = args.n_eval_samples
-    train_args.seed = args.seed
-    return train_args
+    return train_args, eval_args, models
 
 
 def compute_reconstructed_mesh(
@@ -67,49 +65,57 @@ def compute_reconstructed_mesh(
     return trimesh.Trimesh(vertices=recon_vertices, faces=recon_faces)
 
 
-def main(args: argparse.Namespace):
+def main(train_args: argparse.Namespace, eval_args: argparse.Namespace, models: list[Path]) -> None:
     print("Evaluating model...")
 
-    points, normals, _data_std, max_coord, center_point = load_data(args.data_filename)
-
-    # softplus if defined for beta > 0 and approachs relu when beta approaches infinty
-    # if beta < 0, then we set it to relu
+    points, normals, _data_std, max_coord, center_point = load_data(train_args.data_filename)
     static = StaticLossArgs(
-        activation=partial(beta_softplus, beta=args.beta) if args.beta > 0 else relu,
+        activation=partial(beta_softplus, beta=train_args.beta) if train_args.beta > 0 else relu,
         F=lambda x: x / 3,
-        skip_layers=args.mlp_skip_layers,
-        loss_weights=jnp.array(args.loss_weights),
-        epsilon=args.epsilon,
+        skip_layers=train_args.mlp_skip_layers,
+        loss_weights=jnp.array(train_args.loss_weights),
+        epsilon=train_args.epsilon,
     )
 
-    for model_path in args.models:
-        model_path: Path
-        print(f"Loading model from {model_path}...")
+    for model_path in models:
+        print(f"Model: {model_path.name}")
+
         params = load_model(model_path)
-        assert not any(jnp.isnan(w).any() or jnp.isnan(b).any() for w, b in params), "NaNs in parameters!"
+        if any(jnp.isnan(w).any() or jnp.isnan(b).any() for w, b in params):
+            print("NaNs in parameters!")
+            continue
 
         normal_consistency = compute_normal_consistency(points=points, normals=normals, params=params, static=static)
 
-        print(f"Model: {model_path.name}")
         print(f"Normal consistency: {normal_consistency:.4f}")
 
-        recon_mesh = compute_reconstructed_mesh(params, static, max_coord, center_point, args.grid_resolution)
+        recon_mesh = compute_reconstructed_mesh(params, static, max_coord, center_point, eval_args.grid_resolution)
 
-        recon_mesh.export(args.model_save_path / f"{model_path.stem}.ply")
+        recon_mesh.export(eval_args.model_save_path / f"{model_path.stem}.ply")
 
-        data_filename: str = args.data_filename
+        data_filename: str = eval_args.data_filename
 
         if data_filename in SRB_FILES:
             ground_truth_mesh = trimesh.load(REPO_ROOT / f"data/ground_truth/{data_filename}.xyz")
             scan_mesh = trimesh.load(REPO_ROOT / f"data/scans/{data_filename}.ply")
             assert isinstance(ground_truth_mesh, trimesh.PointCloud) and isinstance(scan_mesh, trimesh.PointCloud)
 
-            distances = mesh_distances(recon_mesh, ground_truth_mesh, scan_mesh, n_samples=args.n_eval_samples, seed=args.seed)
+            distances = mesh_distances(
+                recon_mesh,
+                ground_truth_mesh,
+                scan_mesh,
+                n_samples=train_args.n_eval_samples,
+                seed=eval_args.seed,
+                workers=eval_args.n_workers,
+            )
 
             print(f"Distances: \n {json.dumps(distances, indent=2)}")
+
+            with (eval_args.model_save_path / f"{model_path.stem}.json").open("w") as f:
+                json.dump(distances, f, indent=2)
 
     print("Evaluation done!")
 
 
 if __name__ == "__main__":
-    main(get_args())
+    main(*get_args())
