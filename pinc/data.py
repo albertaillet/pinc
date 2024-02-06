@@ -5,7 +5,7 @@ import numpy as np
 import trimesh
 from jax import Array
 from jax.random import key, normal
-from scipy.spatial import cKDTree
+from scipy.spatial import KDTree
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SRB_FILES = ["anchor", "daratech", "dc", "gargoyle", "lord_quas"]
@@ -35,8 +35,7 @@ def process_points(points: np.ndarray) -> tuple[np.ndarray, float, np.ndarray]:
 
 def compute_sigma(points: np.ndarray, k: int = 50) -> np.ndarray:
     """Caculates the distance to the kth nearest neighbor of each point."""
-    tree = cKDTree(points)
-    d, _ = tree.query(points, [k + 1])  # k+1 to remove self
+    d, _ = KDTree(points).query(points, [k + 1])  # k+1 to remove self
     return d  # shape (n, 1)
 
 
