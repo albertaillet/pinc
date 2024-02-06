@@ -1,13 +1,13 @@
 import numpy as np
-from scipy.spatial import cKDTree
+from scipy.spatial import KDTree
 from trimesh import PointCloud, Trimesh, sample
 
 
 def distances(x: np.ndarray, y: np.ndarray, *, workers: int) -> dict[str, float]:
     """Computes the Chamfer and Hausdorff distances between two point clouds."""
     # Code adapted from https://github.com/Chumbyte/DiGS/blob/main/surface_reconstruction/compute_metrics_srb.py#L38
-    xy_distances, _ = cKDTree(x).query(y, k=1, workers=workers)
-    yx_distances, _ = cKDTree(y).query(x, k=1, workers=workers)
+    xy_distances, _ = KDTree(x).query(y, k=1, workers=workers)
+    yx_distances, _ = KDTree(y).query(x, k=1, workers=workers)
 
     # Directed Chamfer distance: d_c(X, Y)= 1 / |X| sum_{x in X} min_{y in Y} |x-y|_2.
     xy_chamfer = np.mean(xy_distances)
@@ -79,6 +79,8 @@ if __name__ == "__main__":
     faces = random_state.randint(0, n_in_recon, size=(n_in_recon, 3))
     recon = Trimesh(vertices=vertices, faces=faces)
 
+    total_time = 0
+
     repo_root = Path(__file__).resolve().parent.parent
     for name in SRB_FILES:
         print(name)
@@ -93,6 +95,9 @@ if __name__ == "__main__":
 
         t = time()
         dists = mesh_distances(recon, gt, scan, n_samples=n_samples, seed=seed, workers=workers)
-        print(f"Elapsed time: {time() - t:.2f}s")
+        t = time() - t
+        total_time += t
+        print(f"Elapsed time: {t:.2f}s")
 
         print(dumps(dists, indent=2))
+    print(f"Total time: {total_time:.2f}s")
