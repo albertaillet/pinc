@@ -68,7 +68,8 @@ def compute_reconstructed_mesh(
 def main(train_args: argparse.Namespace, eval_args: argparse.Namespace, models: list[Path]) -> None:
     print("Evaluating model...")
 
-    points, normals, _data_std, max_coord, center_point = load_data(train_args.data_filename)
+    data_filename: str = train_args.data_filename
+    points, normals, _data_std, max_coord, center_point = load_data(data_filename)
     static = StaticLossArgs(
         activation=partial(beta_softplus, beta=train_args.beta) if train_args.beta > 0 else relu,
         F=lambda x: x / 3,
@@ -76,6 +77,11 @@ def main(train_args: argparse.Namespace, eval_args: argparse.Namespace, models: 
         loss_weights=jnp.array(train_args.loss_weights),
         epsilon=train_args.epsilon,
     )
+
+    if data_filename in SRB_FILES:
+        ground_truth_mesh = trimesh.load(REPO_ROOT / f"data/ground_truth/{data_filename}.xyz")
+        scan_mesh = trimesh.load(REPO_ROOT / f"data/scans/{data_filename}.ply")
+        assert isinstance(ground_truth_mesh, trimesh.PointCloud) and isinstance(scan_mesh, trimesh.PointCloud)
 
     for model_path in models:
         print(f"Model: {model_path.name}")
@@ -85,7 +91,7 @@ def main(train_args: argparse.Namespace, eval_args: argparse.Namespace, models: 
             print("NaNs in parameters!")
             continue
 
-        normal_consistency = compute_normal_consistency(points=points, normals=normals, params=params, static=static)
+        normal_consistency = compute_normal_consistency(points=points, normals=normals, params=params, static=static).item()
 
         print(f"Normal consistency: {normal_consistency:.4f}")
 
@@ -93,26 +99,22 @@ def main(train_args: argparse.Namespace, eval_args: argparse.Namespace, models: 
 
         recon_mesh.export(eval_args.model_save_path / f"{model_path.stem}.ply")
 
-        data_filename: str = eval_args.data_filename
-
         if data_filename in SRB_FILES:
-            ground_truth_mesh = trimesh.load(REPO_ROOT / f"data/ground_truth/{data_filename}.xyz")
-            scan_mesh = trimesh.load(REPO_ROOT / f"data/scans/{data_filename}.ply")
-            assert isinstance(ground_truth_mesh, trimesh.PointCloud) and isinstance(scan_mesh, trimesh.PointCloud)
-
             distances = mesh_distances(
-                recon_mesh,
-                ground_truth_mesh,
-                scan_mesh,
+                recon=recon_mesh,
+                ground_truth=ground_truth_mesh,  # type: ignore
+                scan=scan_mesh,  # type: ignore
                 n_samples=train_args.n_eval_samples,
                 seed=eval_args.seed,
                 workers=eval_args.n_workers,
             )
-
             print(f"Distances: \n {json.dumps(distances, indent=2)}")
+            metrics = {"normal_consistency": normal_consistency, "distances": distances}
+        else:
+            metrics = {"normal_consistency": normal_consistency}
 
-            with (eval_args.model_save_path / f"{model_path.stem}.json").open("w") as f:
-                json.dump(distances, f, indent=2)
+        with (eval_args.model_save_path / f"{model_path.stem}_metrics.json").open("w") as f:
+            json.dump(metrics, f, indent=2)
 
     print("Evaluation done!")
 
