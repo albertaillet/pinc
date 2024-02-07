@@ -13,7 +13,7 @@ from pinc.data import REPO_ROOT, SRB_FILES, load_data
 from pinc.distance import mesh_distances
 from pinc.model import Params, StaticLossArgs, beta_softplus, load_model, mlp_forward
 from pinc.normal_consistency import compute_normal_consistency
-from pinc.utils import mesh_from_sdf
+from pinc.utils import mesh_from_sdf, timed
 
 
 def get_args() -> argparse.Namespace:
@@ -105,7 +105,8 @@ def main(eval_args: argparse.Namespace) -> None:
         recon_mesh.export(reconstructions_path / f"{model_path.stem}.ply")
 
         if data_filename in SRB_FILES:
-            distances = mesh_distances(
+            print("Computing distances...")
+            distances = timed(mesh_distances)(
                 recon=recon_mesh,
                 ground_truth=ground_truth_mesh,  # type: ignore
                 scan=scan_mesh,  # type: ignore

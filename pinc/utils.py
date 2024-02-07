@@ -1,4 +1,6 @@
 from collections.abc import Callable
+from functools import wraps
+from time import time
 
 import jax.numpy as jnp
 import numpy as np
@@ -24,3 +26,19 @@ def mesh_from_sdf(sdf: Callable, grid_range: float, resolution: int, level: floa
     except ValueError:  # no level set crossing
         verts, faces = np.zeros((1, 3)), np.zeros((1, 3))
     return verts, faces
+
+
+def timed(f: Callable, *, return_time: bool = False) -> Callable:
+    """Decorator to time a function, returning the output and optionally the time it took to run."""
+
+    @wraps(f)
+    def _f(*args, **kwargs):
+        t = time()
+        out = f(*args, **kwargs)
+        t = time() - t
+        print(f"{f.__name__} took {t:.4f}s.")
+        if return_time:
+            return out, t
+        return out
+
+    return _f
