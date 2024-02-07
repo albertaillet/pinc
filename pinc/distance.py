@@ -63,11 +63,11 @@ def mesh_distances(
 
 if __name__ == "__main__":
     from json import dumps
-    from time import time
 
     from trimesh import load
 
     from pinc.data import REPO_ROOT, SRB_FILES
+    from pinc.utils import timed
 
     workers = 5
     n_in_recon = 100
@@ -84,10 +84,7 @@ if __name__ == "__main__":
         gt = load(REPO_ROOT / f"data/ground_truth/{name}.xyz")
         assert isinstance(gt, PointCloud) and isinstance(scan, PointCloud)
         print(f"{scan.vertices.shape=}, {gt.vertices.shape=}")
-        t = time()
-        dists = mesh_distances(recon, gt, scan, n_samples=n_samples, seed=seed, workers=workers)
-        t = time() - t
+        dists, t = timed(mesh_distances, return_time=True)(recon, gt, scan, n_samples=n_samples, seed=seed, workers=workers)
         total_time += t
-        print(f"Elapsed time: {t:.2f}s")
         print(dumps(dists, indent=2))
-    print(f"Total time: {total_time:.2f}s")
+    print(f"Total time: {total_time:.4f}s")
