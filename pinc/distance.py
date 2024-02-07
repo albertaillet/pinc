@@ -63,12 +63,11 @@ def mesh_distances(
 
 if __name__ == "__main__":
     from json import dumps
-    from pathlib import Path
     from time import time
 
     from trimesh import load
 
-    from pinc.data import SRB_FILES
+    from pinc.data import REPO_ROOT, SRB_FILES
 
     workers = 5
     n_in_recon = 100
@@ -78,26 +77,17 @@ if __name__ == "__main__":
     vertices = random_state.rand(n_in_recon, 3)
     faces = random_state.randint(0, n_in_recon, size=(n_in_recon, 3))
     recon = Trimesh(vertices=vertices, faces=faces)
-
     total_time = 0
-
-    repo_root = Path(__file__).resolve().parent.parent
     for name in SRB_FILES:
-        print(name)
-
-        scan = load(repo_root / f"data/scans/{name}.ply")
-        assert isinstance(scan, PointCloud)
-
-        gt = load(repo_root / f"data/ground_truth/{name}.xyz")
-        assert isinstance(gt, PointCloud)
-
-        print(scan.vertices.shape, gt.vertices.shape)
-
+        print(f"Processing {name}...")
+        scan = load(REPO_ROOT / f"data/scans/{name}.ply")
+        gt = load(REPO_ROOT / f"data/ground_truth/{name}.xyz")
+        assert isinstance(gt, PointCloud) and isinstance(scan, PointCloud)
+        print(f"{scan.vertices.shape=}, {gt.vertices.shape=}")
         t = time()
         dists = mesh_distances(recon, gt, scan, n_samples=n_samples, seed=seed, workers=workers)
         t = time() - t
         total_time += t
         print(f"Elapsed time: {t:.2f}s")
-
         print(dumps(dists, indent=2))
     print(f"Total time: {total_time:.2f}s")

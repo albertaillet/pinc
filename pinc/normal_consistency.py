@@ -20,23 +20,15 @@ def compute_normal_consistency(points: Array, normals: Array, params: Params, st
 
 
 if __name__ == "__main__":
-    from pathlib import Path
-
     from jax import nn, random
 
-    from pinc.data import load_ply, process_points
+    from pinc.data import load_data
     from pinc.model import init_mlp_params
 
     skip_layers = [1]
-    activation = nn.relu
     params = init_mlp_params([3, 128, 128, 7], random.key(0), skip_layers)
-    F = lambda x: x / 3
 
-    repo_root = Path(__file__).resolve().parent.parent
-    points, normals = load_ply(repo_root / "data/scans/gargoyle.ply")
-    points, _, _ = process_points(points)
-    points, normals = jnp.array(points), jnp.array(normals)
-
-    static = StaticLossArgs(activation=activation, F=F, skip_layers=skip_layers, loss_weights=None, epsilon=None)  # type: ignore
+    points, normals, _, _, _ = load_data("gargoyle")
+    static = StaticLossArgs(activation=nn.relu, F=lambda x: x / 3, skip_layers=skip_layers, loss_weights=None, epsilon=None)  # type: ignore
     nc = compute_normal_consistency(points, normals, params, static)
     print({"normal_consistency": nc.item()})

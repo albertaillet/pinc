@@ -19,7 +19,7 @@ def mesh_from_sdf(sdf: Callable, grid_range: float, resolution: int, level: floa
     sd_grid = lax.map(vmap(sdf), grid)
     sd_grid_numpy = np.array(sd_grid).reshape(resolution, resolution, resolution)
     try:
-        verts, faces, _normals, _values = marching_cubes(sd_grid_numpy, level=level)  # type: ignore
+        verts, faces, _normals, _values = marching_cubes(sd_grid_numpy, level=level)
         verts = verts / resolution * 2 * grid_range - grid_range
     except ValueError:  # no level set crossing
         verts, faces = np.zeros((1, 3)), np.zeros((1, 3))
