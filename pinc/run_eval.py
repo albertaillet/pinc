@@ -16,7 +16,7 @@ from pinc.normal_consistency import compute_normal_consistency
 from pinc.utils import mesh_from_sdf
 
 
-def get_args() -> tuple[argparse.Namespace, argparse.Namespace, list[Path]]:
+def get_args() -> argparse.Namespace:
     """Parse command line arguments, if not specified, the default values are the same as in the paper."""
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--run-path", type=Path, help="Path to the run directory.")
@@ -25,33 +25,31 @@ def get_args() -> tuple[argparse.Namespace, argparse.Namespace, list[Path]]:
     parser.add_argument("-nes", "--n-eval-samples", type=int, default=int(10e6), help="Number of samples for evaluation.")
     parser.add_argument("-s", "--seed", type=int, default=0, help="Random seed for sampling.")
     parser.add_argument("-nw", "--n-workers", type=int, default=5, help="Number of workers for distance computation.")
+    return parser.parse_args()
 
-    eval_args = parser.parse_args()
-    path: Path = eval_args.run_path.resolve()
-    assert path.is_dir(), f"Run directory {path} does not exist!"
-    results = re.search("run-([0-9]{8})_([0-9]{6})-([a-z0-9]{8})", path.name)
+
+def check_run(run_path: Path, n_models: int) -> tuple[argparse.Namespace, list[Path]]:
+    assert run_path.is_dir(), f"Run directory {run_path} does not exist!"
+    results = re.search("run-([0-9]{8})_([0-9]{6})-([a-z0-9]{8})", run_path.name)
     if results is None:
-        raise ValueError(f"Invalid run directory name {path.name}!")
+        raise ValueError(f"Invalid run directory name {run_path.name}!")
     _, _, run_id = results.groups()
-    print(f"Loading run {run_id} from {path}...")
-    path = path / "files"
-    assert (path / "config.json").is_file(), f"Config file {path / 'config.json'} does not exist!"
-    with (path / "config.json").open("r") as f:
+    print(f"Loading run {run_id} from {run_path}...")
+
+    files_path = run_path / "files"
+    assert (files_path / "config.json").is_file(), f"Config file {files_path / 'config.json'} does not exist!"
+    with (files_path / "config.json").open("r") as f:
         config = json.load(f)
-
-    model_save_path = path / "saved_models"
-    assert model_save_path.is_dir(), f"Model directory {path / 'saved_models'} does not exist!"
-    models = list(reversed(sorted(model_save_path.glob("model_*.npz"))))
-    if eval_args.n_models is not None:
-        models = models[: eval_args.n_models]
-    assert models, f"No models found in {models}!"
-    print(f"Found model {[m.name for m in models]}...")
-
-    eval_args.run_id = run_id
-    eval_args.model_save_path = model_save_path
-
     train_args = argparse.Namespace(**config)
-    return train_args, eval_args, models
+
+    model_save_path = files_path / "saved_models"
+    assert model_save_path.is_dir(), f"Model directory {files_path / 'saved_models'} does not exist!"
+    model_paths = list(reversed(sorted(model_save_path.glob("model_*.npz"))))
+    if n_models is not None:
+        model_paths = model_paths[:n_models]
+    assert model_paths, f"No models found in {model_paths}!"
+    print(f"Found models {[m.name for m in model_paths]}...")
+    return train_args, model_paths
 
 
 def compute_reconstructed_mesh(
@@ -65,8 +63,15 @@ def compute_reconstructed_mesh(
     return trimesh.Trimesh(vertices=recon_vertices, faces=recon_faces)
 
 
-def main(train_args: argparse.Namespace, eval_args: argparse.Namespace, models: list[Path]) -> None:
+def main(eval_args: argparse.Namespace) -> None:
     print("Evaluating model...")
+    run_path: Path = eval_args.run_path.resolve()
+    train_args, model_paths = check_run(run_path, eval_args.n_models)
+
+    metrics_path = run_path / "files/metrics"
+    metrics_path.mkdir(exist_ok=True)
+    reconstructions_path = run_path / "files/reconstructions"
+    reconstructions_path.mkdir(exist_ok=True)
 
     data_filename: str = train_args.data_filename
     points, normals, _data_std, max_coord, center_point = load_data(data_filename)
@@ -83,7 +88,7 @@ def main(train_args: argparse.Namespace, eval_args: argparse.Namespace, models: 
         scan_mesh = trimesh.load(REPO_ROOT / f"data/scans/{data_filename}.ply")
         assert isinstance(ground_truth_mesh, trimesh.PointCloud) and isinstance(scan_mesh, trimesh.PointCloud)
 
-    for model_path in models:
+    for model_path in model_paths:
         print(f"Model: {model_path.name}")
 
         params = load_model(model_path)
@@ -97,14 +102,14 @@ def main(train_args: argparse.Namespace, eval_args: argparse.Namespace, models: 
 
         recon_mesh = compute_reconstructed_mesh(params, static, max_coord, center_point, eval_args.grid_resolution)
 
-        recon_mesh.export(eval_args.model_save_path / f"{model_path.stem}.ply")
+        recon_mesh.export(reconstructions_path / f"{model_path.stem}.ply")
 
         if data_filename in SRB_FILES:
             distances = mesh_distances(
                 recon=recon_mesh,
                 ground_truth=ground_truth_mesh,  # type: ignore
                 scan=scan_mesh,  # type: ignore
-                n_samples=train_args.n_eval_samples,
+                n_samples=eval_args.n_eval_samples,
                 seed=eval_args.seed,
                 workers=eval_args.n_workers,
             )
@@ -113,11 +118,11 @@ def main(train_args: argparse.Namespace, eval_args: argparse.Namespace, models: 
         else:
             metrics = {"normal_consistency": normal_consistency}
 
-        with (eval_args.model_save_path / f"{model_path.stem}_metrics.json").open("w") as f:
+        with (metrics_path / f"{model_path.stem}_metrics.json").open("w") as f:
             json.dump(metrics, f, indent=2)
 
     print("Evaluation done!")
 
 
 if __name__ == "__main__":
-    main(*get_args())
+    main(get_args())
