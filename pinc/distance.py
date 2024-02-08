@@ -14,20 +14,20 @@ def distances(x: np.ndarray, y: np.ndarray, *, workers: int) -> dict[str, float]
     yx_chamfer = np.mean(yx_distances)
 
     # Chamfer distance: d_C(X, Y)= 0.5 * (d_c(X, Y) + d_c(Y, X)).
-    chamfer_distance = 0.5 * (xy_chamfer + yx_chamfer)
+    chamfer = 0.5 * (xy_chamfer + yx_chamfer)
 
     # Directed Hausdorff distance: d_h(X, Y)= max_{x in X} min_{y in Y} |x-y|_2.
     xy_hausdorff = np.max(xy_distances)
     yx_hausdorff = np.max(yx_distances)
 
     # Hausdorff distance: d_H(X, Y)= max(d_h(X, Y), d_h(Y, X)).
-    hausdorff_distance = np.maximum(xy_hausdorff, yx_hausdorff)
+    hausdorff = np.maximum(xy_hausdorff, yx_hausdorff)
 
     return {
-        "chamfer": chamfer_distance,
+        "chamfer": chamfer,
         "directed_chamfer": xy_chamfer,
         "directed_chamfer_reversed": yx_chamfer,
-        "hausdorff": hausdorff_distance,
+        "hausdorff": hausdorff,
         "directed_hausdorff": xy_hausdorff,
         "directed_hausdorff_reversed": yx_hausdorff,
     }
