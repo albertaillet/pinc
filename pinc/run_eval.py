@@ -21,7 +21,7 @@ def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--run-path", type=Path, help="Path to the run directory.")
     parser.add_argument("-n", "--n-models", type=int, default=None, help="Number of models to evaluate.")
-    parser.add_argument("-r", "--grid-resolution", type=int, default=256, help="Resolution of the grid.")
+    parser.add_argument("-r", "--grid-resolution", type=int, default=512, help="Resolution of the grid.")
     parser.add_argument("-nes", "--n-eval-samples", type=int, default=int(10e6), help="Number of samples for evaluation.")
     parser.add_argument("-s", "--seed", type=int, default=0, help="Random seed for sampling.")
     parser.add_argument("-nw", "--n-workers", type=int, default=5, help="Number of workers for distance computation.")
