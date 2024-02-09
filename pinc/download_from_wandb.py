@@ -3,7 +3,6 @@
 import subprocess
 import sys
 from datetime import datetime
-from pathlib import Path
 
 from pinc.data import REPO_ROOT
 
@@ -27,7 +26,7 @@ def download_from_wandb(run_id: str) -> None:
     project = "pinc"
     entity = "reproducibility-challenge"
     date = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_dir = Path(REPO_ROOT) / f"wandb/run-{date}-{run_id}/files"
+    run_dir = REPO_ROOT / f"wandb/run-{date}-{run_id}/files"
     run_dir.mkdir(exist_ok=True, parents=True)
     print(f"Downloading run {run_id} to {run_dir}...")
     command = ["wandb", "pull", "--project", project, "--entity", entity, run_id]
