@@ -11,10 +11,10 @@ from pinc.data import REPO_ROOT
 
 
 def log_loss(losses, step: int) -> None:
-    loss, (boundary_losses, sample_losses) = losses
+    loss, (loss_sdf, boundary_losses, sample_losses) = losses
 
-    def loss_terms_dict(loss_terms: Array) -> dict[str, float]:
-        loss_sdf, loss_grad, loss_G, loss_curl, loss_area = loss_terms
+    def loss_terms_dict(loss_sdf: Array, loss_terms: Array) -> dict[str, float]:
+        loss_grad, loss_G, loss_curl, loss_area = loss_terms
         return {
             "loss_sdf": float(loss_sdf),
             "loss_grad": float(loss_grad),
@@ -24,10 +24,14 @@ def log_loss(losses, step: int) -> None:
         }
 
     loss = float(loss)
-    loss_sdf, loss_grad, loss_G, loss_curl, loss_area = boundary_losses + sample_losses
+    loss_grad, loss_G, loss_curl, loss_area = boundary_losses + sample_losses
 
     print(f"Losses: {loss:.4f}, {loss_sdf:.3f}, {loss_grad:.3f}, {loss_G:.3f}, {loss_curl:.3f}, {loss_area:.3f}, step: {step:4d}")
-    data = {"loss": loss, "boundary_loss": loss_terms_dict(boundary_losses), "sample_loss": loss_terms_dict(sample_losses)}
+    data = {
+        "loss": loss,
+        "boundary_loss": loss_terms_dict(loss_sdf, boundary_losses),
+        "sample_loss": loss_terms_dict(jnp.zeros(1), sample_losses),
+    }
     wandb.log(data, step=step)
 
 
