@@ -18,7 +18,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("-f", "--data-filename", type=str, default="gargoyle")
 
     parser.add_argument("-lr", type=float, default=1e-3, help="Learning rate for Adam optimizer.")
-    parser.add_argument("-lw", "--loss-weights", type=float, nargs="+", default=[1, 0.1, 1e-4, 5e-4, 0.1])
+    parser.add_argument("-lw", "--loss-weights", type=float, nargs="+", default=[0.1, 1e-4, 5e-4, 0.1])
     parser.add_argument("-b", "--beta", type=float, default=100.0, help="Beta parameter for beta softplus activation.")
     parser.add_argument("-e", "--epsilon", type=float, default=0.1, help="Epsilon parameter for delta_e.")
     parser.add_argument("-s", "--seed", type=int, default=0, help="Random seed.")
@@ -36,9 +36,12 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("-m", "--wandb-mode", type=str, default="offline", help="The logging mode for wandb.")
 
     args = parser.parse_args()
-    assert len(args.loss_weights) == 5
+    if len(args.loss_weights) == 5:  # the first weight is for the sdf loss (legacy configs)
+        args.loss_weights = args.loss_weights[1:]
+    assert len(args.loss_weights) == 4
     assert args.epsilon > 0  # epsilon must be positive
     args.global_batch_size = args.data_batch_size // 8  # global batch size is 1/8 of data batch size in the original code
+    args.n_steps += 1  # to evaluate the model at the end
     return args
 
 

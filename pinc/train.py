@@ -9,7 +9,7 @@ from jax.random import choice, key, normal, split, uniform
 from pinc.experiment_logging import scan_eval_log
 from pinc.model import Params, StaticLossArgs, beta_softplus, compute_loss, init_mlp_params
 
-Losses = tuple[Array, tuple[Array, Array]]
+Losses = tuple[Array, tuple[Array, Array, Array]]
 
 
 def step(
@@ -23,11 +23,12 @@ def step(
     """Compute loss and update parameters"""
     compute_loss_with_static = partial(compute_loss, static=static)
 
-    def batch_loss(params: Params, boundary_points: Array, sample_points: Array) -> tuple[Array, tuple[Array, Array]]:
-        boundary_loss, boundary_loss_terms = vmap(partial(compute_loss_with_static, params, boundary=True))(boundary_points)
-        sample_loss, sample_loss_terms = vmap(partial(compute_loss_with_static, params, boundary=False))(sample_points)
-        total_loss = (boundary_loss.sum() + sample_loss.sum()) / (len(boundary_points) + len(sample_points))
-        return total_loss, (boundary_loss_terms.mean(axis=0), sample_loss_terms.mean(axis=0))
+    def batch_loss(params: Params, boundary_points: Array, sample_points: Array) -> Losses:
+        loss_sdf, boundary_loss_terms = vmap(partial(compute_loss_with_static, params))(boundary_points)
+        _, sample_loss_terms = vmap(partial(compute_loss_with_static, params))(sample_points)
+        loss_terms_sum = (boundary_loss_terms.sum() + sample_loss_terms.sum()) / (len(boundary_points) + len(sample_points))
+        loss_sdf_mean = loss_sdf.mean()
+        return loss_sdf_mean + loss_terms_sum, (loss_sdf_mean, boundary_loss_terms.mean(axis=0), sample_loss_terms.mean(axis=0))
 
     loss, grad = value_and_grad(batch_loss, has_aux=True)(params, boundary_points, sample_points)
     updates, opt_state = optim.update(grad, opt_state)
@@ -123,7 +124,7 @@ if __name__ == "__main__":
     points_std = jnp.ones_like(points) * 0.1
     normals = jnp.copy(points)
 
-    loss_weights = jnp.array([1, 0.1, 1e-4, 5e-4, 0.1])
+    loss_weights = jnp.array([0.1, 1e-4, 5e-4, 0.1])
     static = StaticLossArgs(
         activation=partial(beta_softplus, beta=100.0),
         F=lambda x: x / 3,
@@ -136,10 +137,11 @@ if __name__ == "__main__":
         print(f"Log model run at step {step}")
 
     def log_loss(losses: Losses, step: int):
-        loss, (boundary_loss, sample_loss) = losses
-        boundary_loss = boundary_loss @ loss_weights
-        sample_loss = sample_loss @ loss_weights
-        print(f"Total loss: {loss:.4f}, Boundary loss: {boundary_loss:.4f}, Sample loss: {sample_loss:.4f}, step: {step}")
+        loss, (loss_sdf, loss_boundary, loss_sample) = losses
+        print(
+            f"Step: {step}, Total loss: {loss:.4f}, SDF loss: {loss_sdf:.4f}, "
+            f"Boundary loss: {loss_boundary.sum():.4f}, Sample loss: {loss_sample.sum():.4f}"
+        )
 
     params, loss = train(
         params=params,
