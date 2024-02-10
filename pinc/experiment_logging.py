@@ -3,6 +3,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Callable, Optional
 
+import jax.numpy as jnp
 from jax import Array, lax
 from jax.experimental.host_callback import id_tap
 
