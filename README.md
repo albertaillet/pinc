@@ -55,3 +55,7 @@ The paper does not mention how many points are sampled outside the points cloud.
 ```python
 sample_global = (torch.rand(batch_size, sample_size//8, dim, device=pc_input.device, requires_grad=True) * (self.global_sigma * 2)) - self.global_sigma
 ```
+
+#### What Minkowski p-norm to use.
+
+In the paper it is not clear what Minkowski p-norm to use. The paper first mentions the l1-norm, but then uses the l2-norm in the equations. The [evaluation code from DiGs](https://github.com/Chumbyte/DiGS/blob/main/surface_reconstruction/compute_metrics_srb.py) uses the l2-norm, but it is yet to be confirmed if this is the correct norm to use.
