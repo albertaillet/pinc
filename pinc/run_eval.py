@@ -76,6 +76,7 @@ def main(eval_args: argparse.Namespace) -> None:
 
     data_filename: str = train_args.data_filename
     points, normals, _data_std, max_coord, center_point = load_data(data_filename)
+    points, normals, center_point = jnp.array(points), jnp.array(normals), jnp.array(center_point)
     static = StaticLossArgs(
         activation=partial(beta_softplus, beta=train_args.beta) if train_args.beta > 0 else relu,
         F=lambda x: x / 3,

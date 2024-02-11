@@ -49,6 +49,7 @@ def main(args: argparse.Namespace):
     print("Initializing...")
 
     points, _normals, data_std, _max_coord, _center_point = load_data(args.data_filename)
+    points, data_std = jnp.array(points), jnp.array(data_std)
     init_key, train_key = split(key(args.seed))
 
     layer_sizes = [3] + [args.mlp_hidden_dim] * args.mlp_n_layers + [7]

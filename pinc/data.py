@@ -1,10 +1,7 @@
 from pathlib import Path
 
-import jax.numpy as jnp
 import numpy as np
 import trimesh
-from jax import Array
-from jax.random import key, normal
 from scipy.spatial import KDTree
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -39,22 +36,14 @@ def compute_sigma(points: np.ndarray, k: int = 50) -> np.ndarray:
     return d  # shape (n, 1)
 
 
-def create_sphere(n: int, data_key: Array) -> Array:
-    points = normal(data_key, (n, 3))
-    return points / jnp.linalg.norm(points, axis=-1, keepdims=True)
-
-
-def load_data(data_filename: str) -> tuple[Array, Array, Array, float, Array]:
+def load_data(data_filename: str) -> tuple[np.ndarray, np.ndarray, np.ndarray, float, np.ndarray]:
     if data_filename in SRB_FILES:
         points, normals = load_ply(REPO_ROOT / f"data/scans/{data_filename}.ply")
-    elif data_filename == "sphere":
-        points = np.array(create_sphere(100_000, key(0)))
-        normals = points.copy()
     else:
         raise ValueError(f"Unknown data filename: {data_filename}")
     points, max_coord, center_point = process_points(points)
     data_std = compute_sigma(points)
-    return jnp.array(points), jnp.array(normals), jnp.array(data_std), max_coord, jnp.array(center_point)
+    return points, normals, data_std, max_coord, center_point
 
 
 if __name__ == "__main__":

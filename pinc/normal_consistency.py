@@ -29,6 +29,7 @@ if __name__ == "__main__":
     params = init_mlp_params([3, 128, 128, 7], random.key(0), skip_layers)
 
     points, normals, _, _, _ = load_data("gargoyle")
+    points, normals = jnp.array(points), jnp.array(normals)
     static = StaticLossArgs(activation=nn.relu, F=lambda x: x / 3, skip_layers=skip_layers, loss_weights=None, epsilon=None)  # type: ignore
     nc = compute_normal_consistency(points, normals, params, static)
     print({"normal_consistency": nc.item()})

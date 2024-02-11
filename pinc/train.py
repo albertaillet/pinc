@@ -109,8 +109,6 @@ def train(
 
 
 if __name__ == "__main__":
-    from pinc.data import create_sphere
-
     init_key, data_key, train_key = split(key(0), 3)
     layer_sizes = [3] + [512] * 7 + [7]
     skip_layers = [4]
@@ -118,8 +116,8 @@ if __name__ == "__main__":
     params = init_mlp_params(layer_sizes, key=init_key, skip_layers=skip_layers)
     optim = optax.adam(optax.piecewise_constant_schedule(1e-3, {2000 * i: 0.99 for i in range(1, num_steps // 2000 + 1)}))
 
-    # Dummy data
-    points = create_sphere(1000, data_key)
+    # Dummy data from a sphere
+    points = normal(data_key, (1_000, 3))
     points = points / jnp.linalg.norm(points, axis=-1, keepdims=True)
     points_std = jnp.ones_like(points) * 0.1
     normals = jnp.copy(points)
