@@ -49,8 +49,6 @@ def mesh_distances(
 
     # NOTE: reconstruction vertices must but multiplied by the scale factor and translated by the center
     reconstruction_points, *_ = sample.sample_surface(recon, n_samples, seed=seed)
-    # gt_points, *_ = sample.sample_surface(ground_truth, n_samples)
-    # scan_points, *_ = sample.sample_surface(scan, n_samples)
 
     ground_truth_points = ground_truth.vertices
     scan_points = scan.vertices
