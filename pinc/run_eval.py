@@ -44,7 +44,8 @@ def check_run(run_path: Path, n_models: int) -> tuple[argparse.Namespace, list[P
 
     model_save_path = files_path / "saved_models"
     assert model_save_path.is_dir(), f"Model directory {files_path / 'saved_models'} does not exist!"
-    model_paths = list(reversed(sorted(model_save_path.glob("model_*.npz"))))
+    key_fun = lambda p: int(p.stem.split("_")[-1])
+    model_paths = list(reversed(sorted(model_save_path.glob("model_*.npz"), key=key_fun)))
     if n_models is not None:
         model_paths = model_paths[:n_models]
     assert model_paths, f"No models found in {model_paths}!"
