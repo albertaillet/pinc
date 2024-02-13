@@ -1,3 +1,7 @@
+"""Generates the result table with the reported distance metrics. This script also require pandas and jinja2.
+to install them: pip install pandas jinja2
+"""
+
 import json
 from enum import StrEnum
 from typing import NamedTuple
@@ -33,7 +37,7 @@ class RunTypes(StrEnum):
 RUN_IDS = {
     "anchor": {
         RunTypes.TYPE_1: "8lcvaqh4",
-        RunTypes.TYPE_2: None,
+        RunTypes.TYPE_2: "7nsgf68t",
     },
     "daratech": {
         RunTypes.TYPE_1: "kt67i502",
@@ -41,7 +45,7 @@ RUN_IDS = {
     },
     "dc": {
         RunTypes.TYPE_1: "1o79somx",
-        RunTypes.TYPE_2: None,
+        RunTypes.TYPE_2: "v0l912vq",
     },
     "gargoyle": {
         RunTypes.TYPE_1: "6jfgejpa",
@@ -65,18 +69,6 @@ def parse_table(table: str, columns: list[str]) -> dict[str, dict[str, Metrics]]
 
     # invert the dictionary to have the file names as the keys
     return {file: {method: metric_results[method][file] for method in metric_results} for file in columns}
-
-
-def flatten_metrics_for_df(metrics: dict[str, dict[str, Metrics]]) -> dict[str, dict[tuple[str, str], float]]:
-    # flatten the dictionary to have a tuple of (file, metric_name) as the key and the spec as the subkey
-    flat_metrics = {}
-    for file, specs in metrics.items():
-        for spec, metric in specs.items():
-            for metric_name, value in metric._asdict().items():
-                if (file, metric_name) not in flat_metrics:
-                    flat_metrics[(file, metric_name)] = {}
-                flat_metrics[(file, metric_name)][spec] = value
-    return flat_metrics
 
 
 def add_runs_to_reported_metrics(reported_metrics: dict[str, dict[str, Metrics]]) -> dict[str, dict[str, Metrics]]:
@@ -109,8 +101,7 @@ def add_runs_to_reported_metrics(reported_metrics: dict[str, dict[str, Metrics]]
             metrics_path = run_dir / "files" / "metrics"
             key_fun = lambda p: int(p.stem.split("_")[1])
             metrics = sorted(metrics_path.glob("model_*_metrics.json"), key=key_fun)
-            if len(metrics) == 0:
-                continue
+            assert len(metrics) > 0, f"No metrics found in {metrics_path}"
             metric_path = metrics[-1]
             assert key_fun(metric_path) == 100_000
             with metric_path.open("r") as f:
@@ -126,6 +117,26 @@ def add_runs_to_reported_metrics(reported_metrics: dict[str, dict[str, Metrics]]
     return reported_metrics
 
 
+def flatten_metrics_for_df(metrics: dict[str, dict[str, Metrics]]) -> dict[str, dict[tuple[str, str, str], float]]:
+    # flatten the dictionary to have a tuple of (file_name, compared_point_cloud, distance_name) as the key
+    # as the key and the spec as the subkey
+    flat_metrics = {}
+    for file, specs in metrics.items():
+        file_name = file.replace("_", " ").capitalize()
+        for spec, metric in specs.items():
+            for compared_point_cloud, distance_name, value in [
+                ("GT", "chamfer", metric.gt_chamfer),
+                ("GT", "hausdorff", metric.gt_hausdorff),
+                ("Scan", "directed_chamfer", metric.scan_directed_chamfer),
+                ("Scan", "directed_hausdorff", metric.scan_directed_hausdorff),
+            ]:
+                tuple_key = (file_name, compared_point_cloud, distance_name)
+                if tuple_key not in flat_metrics:
+                    flat_metrics[tuple_key] = {}
+                flat_metrics[tuple_key][spec] = value
+    return flat_metrics
+
+
 if __name__ == "__main__":
     reported_metrics = parse_table(PAPER_TABLE, PAPER_SRB_FILES)
 
@@ -133,4 +144,20 @@ if __name__ == "__main__":
 
     flat_metrics = flatten_metrics_for_df(reported_metrics)
 
-    print(pd.DataFrame(flat_metrics))
+    df = pd.DataFrame(flat_metrics)
+
+    n_top = len(df.columns.levels[0])  # type: ignore
+    column_format = "l" + "|".join(["cccc"] * n_top)
+
+    latex_string = (
+        df.to_latex(escape=False, float_format="%.2f", multirow=True, column_format=column_format, multicolumn_format="c")
+        .replace("directed_chamfer", r"$d_{\overrightarrow{C}}$")
+        .replace("directed_hausdorff", r"$d_{\overrightarrow{H}}$")
+        .replace("chamfer", "$d_C$")
+        .replace("hausdorff", "$d_H$")
+        .replace(r"\toprule", r"\hline")
+        .replace(r"\midrule", r"\hline")
+        .replace(r"\bottomrule", r"\hline")
+        .replace("NaN", " ")
+    )
+    print(latex_string)
