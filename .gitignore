@@ -4,5 +4,5 @@ data/
 *.pyc
 *.npz
 **wandb/
-temp/
+tmp/
 scripts/compute_metrics_srb.py
