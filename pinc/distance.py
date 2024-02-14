@@ -56,6 +56,7 @@ def mesh_distances(
     return {
         "ground_truth": distances(reconstruction_points, ground_truth_points, workers=workers),
         "scan": distances(reconstruction_points, scan_points, workers=workers),
+        "parameters": {"n_samples": n_samples, "seed": seed, "workers": workers},
     }
 
 

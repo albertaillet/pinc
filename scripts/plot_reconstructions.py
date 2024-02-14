@@ -21,8 +21,8 @@ def process_points(points: np.ndarray) -> tuple[np.ndarray, float, np.ndarray]:
 # %%
 ground_truth_point_cloud: trimesh.PointCloud = trimesh.load(REPO_ROOT / "data/ground_truth/gargoyle.xyz")  # type: ignore
 scan_point_cloud: trimesh.PointCloud = trimesh.load(REPO_ROOT / "data/scans/gargoyle.ply")  # type: ignore
-recon_mesh: trimesh.Trimesh = trimesh.load(REPO_ROOT / "temp/model_100000.ply")  # type: ignore
-recon_mesh_pinc: trimesh.Trimesh = trimesh.load(REPO_ROOT / "temp/igr_100000_single_shape.ply")  # type: ignore
+recon_mesh: trimesh.Trimesh = trimesh.load(REPO_ROOT / "tmp/model_100000.ply")  # type: ignore
+recon_mesh_pinc: trimesh.Trimesh = trimesh.load(REPO_ROOT / "tmp/igr_100000_single_shape.ply")  # type: ignore
 
 # %%
 scan_center_point = scan_point_cloud.vertices.mean(axis=0)
