@@ -30,8 +30,10 @@ PINC 0.29 7.54 0.09 1.20 0.37 7.24 0.11 1.88 0.14 2.56 0.04 2.73 0.16 4.78 0.05 
 
 
 class RunTypes(StrEnum):
-    TYPE_1 = "jax with epsilon=0.1"
-    TYPE_2 = "jax with epsilon=1.0"
+    TYPE_1 = "repro epsilon=0.1"
+    TYPE_2 = "repro epsilon=1.0"
+    TYPE_3 = "pinc code epsilon=0.1"
+    TYPE_4 = "pinc code epsilon=1.0"
 
 
 RUN_IDS = {
@@ -42,6 +44,8 @@ RUN_IDS = {
     "daratech": {
         RunTypes.TYPE_1: "kt67i502",
         RunTypes.TYPE_2: "teoj02mm",
+        RunTypes.TYPE_3: "2024_02_13_10_44_11",
+        RunTypes.TYPE_4: "2024_02_12_22_17_49",
     },
     "dc": {
         RunTypes.TYPE_1: "1o79somx",
@@ -50,6 +54,8 @@ RUN_IDS = {
     "gargoyle": {
         RunTypes.TYPE_1: "6jfgejpa",
         RunTypes.TYPE_2: "ojbs5lgy",
+        RunTypes.TYPE_3: "2024_02_09_19_17_27",
+        RunTypes.TYPE_4: "2024_02_12_11_27_25",
     },
     "lord_quas": {
         RunTypes.TYPE_1: "lc8cu813",
@@ -71,49 +77,60 @@ def parse_table(table: str, columns: list[str]) -> dict[str, dict[str, Metrics]]
     return {file: {method: metric_results[method][file] for method in metric_results} for file in columns}
 
 
+def load_run_metrics(run_id: str, file: str, spec: RunTypes) -> Metrics:
+    """Loads the metrics from a run."""
+    assert spec in RunTypes, f"Unknown spec: {spec}"
+    if spec in [RunTypes.TYPE_1, RunTypes.TYPE_2]:
+        matching_run_dirs = list((REPO_ROOT / "wandb").glob(f"run-*-{run_id}"))
+        assert len(matching_run_dirs) == 1, f"Found {len(matching_run_dirs)} matching run directories for {run_id}"
+        run_dir = matching_run_dirs[0]
+        assert run_dir.is_dir(), f"{run_dir} is not a directory"
+
+        # load the metrics from the run directory
+        metrics_path = run_dir / "files" / "config.json"
+
+        with (run_dir / "files" / "config.json").open("r") as f:
+            config = json.load(f)
+
+        # Check if the config file is correct
+        if spec == RunTypes.TYPE_1:
+            assert config["epsilon"] == 0.1
+        elif spec == RunTypes.TYPE_2:
+            assert config["epsilon"] == 1.0
+        else:
+            raise ValueError(f"Unknown spec: {spec}")
+        assert config["data_filename"] == file
+        assert len(config["loss_weights"]) == 4  # check for the right version of the config
+
+        # load the metrics from the run directory
+        metrics_path = run_dir / "files" / "metrics"
+        key_fun = lambda p: int(p.stem.split("_")[1])
+        metrics = sorted(metrics_path.glob("model_*_metrics.json"), key=key_fun)
+        assert len(metrics) > 0, f"No metrics found in {metrics_path}"
+        metric_path = metrics[-1]
+        assert key_fun(metric_path) == 100_000
+        with metric_path.open("r") as f:
+            metric_data = json.load(f)
+    elif spec in [RunTypes.TYPE_3, RunTypes.TYPE_4]:
+        # load the metrics from the pinc code
+        metric_path = REPO_ROOT / "tmp" / "metrics" / f"{file}_{run_id}.json"
+    else:
+        raise ValueError(f"Unknown spec: {spec}")
+
+    with metric_path.open("r") as f:
+        metric_data = json.load(f)
+    return Metrics(
+        gt_chamfer=metric_data["distances"]["ground_truth"]["chamfer"],
+        gt_hausdorff=metric_data["distances"]["ground_truth"]["hausdorff"],
+        scan_directed_chamfer=metric_data["distances"]["scan"]["directed_chamfer"],
+        scan_directed_hausdorff=metric_data["distances"]["scan"]["directed_hausdorff"],
+    )
+
+
 def add_runs_to_reported_metrics(reported_metrics: dict[str, dict[str, Metrics]]) -> dict[str, dict[str, Metrics]]:
     for file, run_ids in RUN_IDS.items():
         for spec, run_id in run_ids.items():
-            if run_id is None:
-                continue
-            matching_run_dirs = list((REPO_ROOT / "wandb").glob(f"run-*-{run_id}"))
-            assert len(matching_run_dirs) == 1, f"Found {len(matching_run_dirs)} matching run directories for {run_id}"
-            run_dir = matching_run_dirs[0]
-            assert run_dir.is_dir(), f"{run_dir} is not a directory"
-
-            # load the metrics from the run directory
-            metrics_path = run_dir / "files" / "config.json"
-
-            with (run_dir / "files" / "config.json").open("r") as f:
-                config = json.load(f)
-
-            # Check if the config file is correct
-            if spec == RunTypes.TYPE_1:
-                assert config["epsilon"] == 0.1
-            elif spec == RunTypes.TYPE_2:
-                assert config["epsilon"] == 1.0
-            else:
-                raise ValueError(f"Unknown spec: {spec}")
-            assert config["data_filename"] == file
-            assert len(config["loss_weights"]) == 4  # check for the right version of the config
-
-            # load the metrics from the run directory
-            metrics_path = run_dir / "files" / "metrics"
-            key_fun = lambda p: int(p.stem.split("_")[1])
-            metrics = sorted(metrics_path.glob("model_*_metrics.json"), key=key_fun)
-            assert len(metrics) > 0, f"No metrics found in {metrics_path}"
-            metric_path = metrics[-1]
-            assert key_fun(metric_path) == 100_000
-            with metric_path.open("r") as f:
-                metric_data = json.load(f)
-            metric = Metrics(
-                gt_chamfer=metric_data["distances"]["ground_truth"]["chamfer"],
-                gt_hausdorff=metric_data["distances"]["ground_truth"]["hausdorff"],
-                scan_directed_chamfer=metric_data["distances"]["scan"]["directed_chamfer"],
-                scan_directed_hausdorff=metric_data["distances"]["scan"]["directed_hausdorff"],
-            )
-
-            reported_metrics[file][spec] = metric
+            reported_metrics[file][spec] = load_run_metrics(run_id, file, spec)
     return reported_metrics
 
 
