@@ -230,7 +230,6 @@ sdf, grad_sdf, G, G_tilde, curl_G_tilde = compute_variables(params, x, activatio
 # sdf -> SDF_pred
 # G -> grad_pred
 # G_tilde -> auggrad_pred
-torch_out_cpu = jax.tree_map(lambda x: x.detach().numpy(), torch_out)
 assert np.allclose(sdf, torch_out_cpu["SDF_pred"])
 assert np.allclose(G, torch_out_cpu["grad_pred"])
 assert np.allclose(G_tilde, torch_out_cpu["auggrad_pred"])
@@ -286,6 +285,6 @@ assert np.allclose(loss_sdf, torch_losses_cpu["mnfld_loss"])
 assert np.allclose(loss_terms_sum[0], torch_losses_cpu["grad_loss"])
 assert np.allclose(loss_terms_sum[1], torch_losses_cpu["G_matching"])
 assert np.allclose(loss_terms_sum[2], torch_losses_cpu["curl_loss"])
-assert np.allclose(loss_terms_sum[3], torch_losses_cpu["area_loss"], atol=1e-6)
+assert np.allclose(loss_terms_sum[3], torch_losses_cpu["area_loss"])
 
 # %%
