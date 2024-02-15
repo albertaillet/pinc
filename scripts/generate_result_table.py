@@ -30,36 +30,41 @@ PINC 0.29 7.54 0.09 1.20 0.37 7.24 0.11 1.88 0.14 2.56 0.04 2.73 0.16 4.78 0.05 
 
 
 class RunTypes(StrEnum):
-    TYPE_1 = "repro epsilon=0.1"
-    TYPE_2 = "repro epsilon=1.0"
-    TYPE_3 = "pinc code epsilon=0.1"
-    TYPE_4 = "pinc code epsilon=1.0"
+    TYPE_1 = "pinc code epsilon=0.1"
+    TYPE_2 = "pinc code epsilon=1.0"
+    TYPE_3 = "repro epsilon=0.1"
+    TYPE_4 = "repro epsilon=1.0"
 
 
 RUN_IDS = {
     "anchor": {
-        RunTypes.TYPE_1: "8lcvaqh4",
-        RunTypes.TYPE_2: "7nsgf68t",
+        RunTypes.TYPE_3: "8lcvaqh4",
+        RunTypes.TYPE_4: "7nsgf68t",
+        RunTypes.TYPE_1: "2024_02_12_11_31_23_lor_anchor_eps_01",
     },
     "daratech": {
-        RunTypes.TYPE_1: "kt67i502",
-        RunTypes.TYPE_2: "teoj02mm",
-        RunTypes.TYPE_3: "2024_02_13_10_44_11",
-        RunTypes.TYPE_4: "2024_02_12_22_17_49",
+        RunTypes.TYPE_1: "2024_02_13_10_44_11",
+        RunTypes.TYPE_2: "2024_02_12_22_17_49",
+        RunTypes.TYPE_3: "kt67i502",
+        RunTypes.TYPE_4: "teoj02mm",
     },
     "dc": {
-        RunTypes.TYPE_1: "1o79somx",
-        RunTypes.TYPE_2: "v0l912vq",
+        RunTypes.TYPE_1: "2024_02_13_08_51_39_lor_dc_eps_01",
+        RunTypes.TYPE_2: "2024_02_14_09_06_06_lor_dc_eps_1",
+        RunTypes.TYPE_3: "1o79somx",
+        RunTypes.TYPE_4: "v0l912vq",
     },
     "gargoyle": {
-        RunTypes.TYPE_1: "6jfgejpa",
-        RunTypes.TYPE_2: "ojbs5lgy",
-        RunTypes.TYPE_3: "2024_02_09_19_17_27",
-        RunTypes.TYPE_4: "2024_02_12_11_27_25",
+        RunTypes.TYPE_1: "2024_02_09_19_17_27",
+        RunTypes.TYPE_2: "2024_02_12_11_27_25",
+        RunTypes.TYPE_3: "6jfgejpa",
+        RunTypes.TYPE_4: "ojbs5lgy",
     },
     "lord_quas": {
-        RunTypes.TYPE_1: "lc8cu813",
-        RunTypes.TYPE_2: "1f5dvyoc",
+        RunTypes.TYPE_1: "2024_02_13_22_30_18",
+        RunTypes.TYPE_2: "2024_02_14_17_35_11",
+        RunTypes.TYPE_3: "lc8cu813",
+        RunTypes.TYPE_4: "1f5dvyoc",
     },
 }
 
@@ -80,7 +85,7 @@ def parse_table(table: str, columns: list[str]) -> dict[str, dict[str, Metrics]]
 def load_run_metrics(run_id: str, file: str, spec: RunTypes) -> Metrics:
     """Loads the metrics from a run."""
     assert spec in RunTypes, f"Unknown spec: {spec}"
-    if spec in [RunTypes.TYPE_1, RunTypes.TYPE_2]:
+    if spec in [RunTypes.TYPE_3, RunTypes.TYPE_4]:
         matching_run_dirs = list((REPO_ROOT / "wandb").glob(f"run-*-{run_id}"))
         assert len(matching_run_dirs) == 1, f"Found {len(matching_run_dirs)} matching run directories for {run_id}"
         run_dir = matching_run_dirs[0]
@@ -93,9 +98,9 @@ def load_run_metrics(run_id: str, file: str, spec: RunTypes) -> Metrics:
             config = json.load(f)
 
         # Check if the config file is correct
-        if spec == RunTypes.TYPE_1:
+        if spec == RunTypes.TYPE_3:
             assert config["epsilon"] == 0.1
-        elif spec == RunTypes.TYPE_2:
+        elif spec == RunTypes.TYPE_4:
             assert config["epsilon"] == 1.0
         else:
             raise ValueError(f"Unknown spec: {spec}")
@@ -111,7 +116,7 @@ def load_run_metrics(run_id: str, file: str, spec: RunTypes) -> Metrics:
         assert key_fun(metric_path) == 100_000
         with metric_path.open("r") as f:
             metric_data = json.load(f)
-    elif spec in [RunTypes.TYPE_3, RunTypes.TYPE_4]:
+    elif spec in [RunTypes.TYPE_1, RunTypes.TYPE_2]:
         # load the metrics from the pinc code
         metric_path = REPO_ROOT / "tmp" / "metrics" / f"{file}_{run_id}.json"
     else:
