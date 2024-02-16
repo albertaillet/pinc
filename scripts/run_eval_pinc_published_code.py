@@ -27,11 +27,17 @@ for experiment_path in EXPERIMENTS_DIR.iterdir():
     file_name = Path(config[0].split("input_path: ")[1]).stem
     assert file_name in SRB_FILES, f"File {file_name} not in SRB_FILES"
 
-    output_file = OUTPUT_DIR / f"{file_name}_{experiment_path.name}.json"
+    exp_output_dir = OUTPUT_DIR / f"{experiment_path.name}"
+    output_file = exp_output_dir / f"{file_name}_{experiment_path.name}.json"
 
     if output_file.exists():
         print(f"Skipping {file_name} in {experiment_path}")
         continue
+
+    exp_output_dir.mkdir(exist_ok=True, parents=True)
+
+    # copy the mesh to the experiment folder
+    (exp_output_dir / "igr_100000_single_shape.ply").write_bytes(mesh_path.read_bytes())
 
     ground_truth: trimesh.PointCloud = trimesh.load(REPO_ROOT / "data" / "ground_truth" / f"{file_name}.xyz")  # type: ignore
     scan: trimesh.PointCloud = trimesh.load(REPO_ROOT / "data" / "scans" / f"{file_name}.ply")  # type: ignore

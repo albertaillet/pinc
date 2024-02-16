@@ -119,7 +119,7 @@ def load_run_metrics(run_id: str, file: str, spec: RunTypes) -> Metrics:
             metric_data = json.load(f)
     elif spec in [RunTypes.TYPE_2, RunTypes.TYPE_1]:
         # load the metrics from the pinc code
-        metric_path = REPO_ROOT / "tmp" / "metrics" / f"{file}_{run_id}.json"
+        metric_path = REPO_ROOT / "tmp" / "metrics" / run_id / f"{file}_{run_id}.json"
     else:
         raise ValueError(f"Unknown spec: {spec}")
 
@@ -173,7 +173,7 @@ if __name__ == "__main__":
     column_format = "l" + "|".join(["cccc"] * n_top)
 
     latex_string = (
-        df.to_latex(escape=False, float_format="%.2f", multirow=True, column_format=column_format, multicolumn_format="c")
+        df.to_latex(float_format="%.2f", multirow=True, column_format=column_format, multicolumn_format="c")
         .replace("directed_chamfer", r"$d_{\overrightarrow{C}}$")
         .replace("directed_hausdorff", r"$d_{\overrightarrow{H}}$")
         .replace("chamfer", "$d_C$")
