@@ -6,7 +6,6 @@ import numpy as np
 import trimesh
 from plotly import graph_objects as go
 
-# from plotly.subplots import make_subplots
 from pinc.data import REPO_ROOT, process_points
 from pinc.visualize import plot_mesh, plot_points
 
@@ -153,5 +152,3 @@ COLORS = ["lightblue", "lightgreen", "lightcoral", "lightgray", "orange"]
 if __name__ == "__main__":
     for file, color in zip(PAPER_SRB_FILES, COLORS):
         main(file, color)
-
-# %%
