@@ -1,4 +1,3 @@
-# %%
 """Generates the plots for the paper."""
 
 from enum import StrEnum
@@ -80,7 +79,6 @@ def plot_trimesh(mesh: trimesh.Trimesh, **kwargs) -> go.Mesh3d:
     return plot_mesh(points, triangles, **kwargs)
 
 
-# %%
 CAMERAS = {
     "anchor": dict(
         eye=dict(x=1, y=-1.4, z=1),
@@ -90,12 +88,12 @@ CAMERAS = {
     "daratech": dict(
         eye=dict(x=0, y=-1.5, z=1),
         up=dict(x=0, y=0, z=1),
-        center=dict(x=0, y=0, z=0),
+        center=dict(x=0.07, y=0, z=0),
     ),
     "dc": dict(
-        eye=dict(x=0, y=0.5, z=1.4),
+        eye=dict(x=0, y=0.5, z=1.5),
         up=dict(x=0, y=1, z=0),
-        center=dict(x=0, y=0, z=0),
+        center=dict(x=-0.05, y=0, z=0),
     ),
     "gargoyle": dict(
         eye=dict(x=1, y=-0.5, z=-1.2),
@@ -123,20 +121,19 @@ def make_and_save_figure(trace, camera: dict[str, dict], name: str):
         ),
     )
     print(f"Writing {name}")
-    fig.write_image(REPO_ROOT / f"tmp/figs/{name}")
+    fig.write_image(REPO_ROOT / f"tmp/figs/{name}", scale=6, width=1080, height=1080)
     print("Done writing file")
 
 
-def main(file: str):
+def main(file: str, color: str) -> None:
     assert file in PAPER_SRB_FILES, f"Unknown file: {file}"
-    color = "lightblue"
     camera = CAMERAS[file]
     scan_mesh: trimesh.PointCloud = trimesh.load(REPO_ROOT / "data" / "scans" / f"{file}.ply")  # type: ignore
 
     points, max_coord, center_point = process_points(scan_mesh.vertices)
 
     marker = dict(
-        size=0.5,  # Set marker size
+        size=0.3,  # Set marker size
         color=color,  # Set marker color
         symbol="circle",  # Set marker symbol ('circle' in this case)
         opacity=0.7,  # Set marker opacity
@@ -144,12 +141,17 @@ def main(file: str):
 
     trace = plot_points(points, marker=marker)
     make_and_save_figure(trace, camera, f"{file}_scan.png")
+
     for type_index, spec in enumerate(RunTypes, 1):
         mesh = load_mesh(RUN_IDS[file][spec], spec, center_point, max_coord)
         trace = plot_trimesh(mesh, color=color)
         make_and_save_figure(trace, camera, f"{file}_{type_index}.png")
 
 
-for file in PAPER_SRB_FILES:
-    main(file)
+COLORS = ["lightblue", "lightgreen", "lightcoral", "lightgray", "orange"]
+
+if __name__ == "__main__":
+    for file, color in zip(PAPER_SRB_FILES, COLORS):
+        main(file, color)
+
 # %%
