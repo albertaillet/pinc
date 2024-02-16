@@ -120,7 +120,7 @@ def make_and_save_figure(trace, camera: dict[str, dict], name: str):
         ),
     )
     print(f"Writing {name}")
-    fig.write_image(REPO_ROOT / f"tmp/figs/{name}", scale=6, width=1080, height=1080)
+    fig.write_image(REPO_ROOT / f"tmp/figs/{name}", scale=1, width=1080, height=1080)
     print("Done writing file")
 
 
