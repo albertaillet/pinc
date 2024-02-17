@@ -1,4 +1,4 @@
-## PINC Reproducability
+## PINC Reproducibility
 
 The repository contains the code for the reproducibility study of the NeurIPS 2023 paper "p-Poisson surface reconstruction in curl-free flow from point clouds" by Yesom Park, Taekyung Lee, Jooyoung Hahn, and Myungjoo Kang.
 
