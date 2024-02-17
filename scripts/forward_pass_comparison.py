@@ -1,20 +1,15 @@
 # %% This script compares the forward pass of the published torch model with our implemented jax model
-import os
+import random
+from functools import partial
 
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+import jax
+import numpy as np
+import torch
+import torch.nn as nn
+from jax import Array, vmap
+from torch.autograd import grad
 
-# %%
-import random  # noqa: E402
-from functools import partial  # noqa: E402
-
-import jax  # noqa: E402
-import numpy as np  # noqa: E402
-import torch  # noqa: E402
-import torch.nn as nn  # noqa: E402
-from jax import Array, vmap  # noqa: E402
-from torch.autograd import grad  # noqa: E402
-
-from pinc.model import Params, StaticLossArgs, beta_softplus, compute_loss, compute_variables, mlp_forward  # noqa: E402
+from pinc.model import Params, StaticLossArgs, beta_softplus, compute_loss, compute_variables, mlp_forward
 
 
 def bumpft(val, epsilon=0.1):
@@ -275,10 +270,11 @@ loss, (loss_sdf, loss_terms_sum) = jax_losses
 # %%
 # mapping:
 # loss -> loss
-# mnfld_loss -> loss_sdf
-# grad_loss -> loss_terms_sum
-# G_matching -> boundary_loss_terms.mean(axis=0)
-# curl_loss -> sample_loss_terms.mean(axis=0)
+# loss_sdf -> mnfld_loss
+# loss_terms_sum[0] -> grad_loss
+# loss_terms_sum[1] -> G_matching
+# loss_terms_sum[2] -> curl_loss
+# loss_terms_sum[3] -> area_loss
 assert np.allclose(loss, torch_losses_cpu["loss"])
 assert np.allclose(loss_sdf, torch_losses_cpu["mnfld_loss"])
 assert np.allclose(loss_terms_sum[0], torch_losses_cpu["grad_loss"])
