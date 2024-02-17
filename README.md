@@ -24,10 +24,6 @@ The datasets used in the paper are the Surface Reconstruction Benchmark (SRB) an
 
 The SRB dataset was found in the README of [DiGS: Divergence guided shape implicit neural representation for unoriented point clouds](https://github.com/Chumbyte/DiGS) that SRB can be downloaded from using the provided script [`download_srb.sh`](https://github.com/Chumbyte/DiGS/blob/main/data/scripts/download_srb.sh) that downloads the data from the [Deep Geometric Prior for Surface Reconstruction](https://github.com/fwilliams/deep-geometric-prior) paper. This data is located on [Google Drive](https://drive.google.com/file/d/17Elfc1TTRzIQJhaNu5m7SckBH_mdjYSe/view) is a 1.1GB zip file. The subfolders `scans` and `ground_truth` contain the data used in the paper.
 
-#### Thingi10K
-
-TODO: Find the data
-
 ## Notes
 
 #### Mistake in 50th nearest neighbor calculation
@@ -59,3 +55,33 @@ sample_global = (torch.rand(batch_size, sample_size//8, dim, device=pc_input.dev
 #### What Minkowski p-norm to use.
 
 In the paper it is not clear what Minkowski p-norm to use. The paper first mentions the l1-norm, but then uses the l2-norm in the equations. The [evaluation code from DiGs](https://github.com/Chumbyte/DiGS/blob/main/surface_reconstruction/compute_metrics_srb.py) uses the l2-norm, but it is yet to be confirmed if this is the correct norm to use.
+
+
+#### Geometric initialization is slightly different
+
+```python
+def create_params(w_mean: Array, w_std: Array, b_const: float) -> tuple[Array, Array]:
+    return w_mean + w_std * normal(key, (out_dim, in_dim)), b_const * jnp.ones(out_dim)
+
+# Geometric initialization according to "SAL: Sign Agnostic Learning of Shapes From Raw Data"
+# https://github.com/matanatz/SAL/blob/master/code/model/network.py#L112
+# PINC implementation:
+# https://github.com/Yebbi/PINC/blob/main/model/network.py#L46
+# IGR implementation:
+# https://github.com/amosgropp/IGR/blob/master/code/model/network.py#L48
+if last_layer:
+    # Inconsitency between SAL and PINC (factor of 2) and p in denominator
+    # in SAL: 2*sqrt(pi) / sqrt(in_dim*p)
+    # in PINC:  sqrt(pi) / sqrt(in_dim)
+    return create_params(w_mean=jnp.sqrt(jnp.pi / in_dim), w_std=jnp.array(1e-5), b_const=-0.1)
+return create_params(w_mean=jnp.array(0), w_std=jnp.sqrt(2 / in_dim), b_const=0.0)
+```
+
+#### Division by sqrt(2) in the skip connection
+
+The layer with the skip connection in the model is divided by sqrt(2) in the original code. This is not mentioned in the paper.
+
+```python
+if layer in self.skip_in:
+    output = torch.cat([output, input], -1) / np.sqrt(2)
+```
