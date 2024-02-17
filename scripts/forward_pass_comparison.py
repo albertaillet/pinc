@@ -1,4 +1,4 @@
-# %%
+# %% This script compares the forward pass of the published torch model with our implemented jax model
 import os
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
@@ -263,9 +263,8 @@ static = StaticLossArgs(
 def batch_loss(params: Params, boundary_points: Array, sample_points: Array):
     loss_sdf, boundary_loss_terms = vmap(partial(compute_loss, params, static=static))(boundary_points)
     _, sample_loss_terms = vmap(partial(compute_loss, params, static=static))(sample_points)
-    loss_terms_sum = (boundary_loss_terms.sum(axis=0) + sample_loss_terms.sum(axis=0)) / (
-        len(boundary_points) + len(sample_points)
-    )
+    n_points = len(boundary_points) + len(sample_points)
+    loss_terms_sum = (boundary_loss_terms.sum(axis=0) + sample_loss_terms.sum(axis=0)) / n_points
     loss_sdf_mean = loss_sdf.mean()
     return loss_sdf_mean + loss_terms_sum.sum(), (loss_sdf_mean, loss_terms_sum)
 
