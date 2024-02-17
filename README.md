@@ -16,6 +16,7 @@ pip install -e ".[dev]"  # Install dev dependencies
 pre-commit install
 ```
 
+
 ### Data
 
 The datasets used in the paper are the Surface Reconstruction Benchmark (SRB) and Thingi10K. It is unclear from the paper and the provided how the datasets were obtained.
@@ -23,6 +24,13 @@ The datasets used in the paper are the Surface Reconstruction Benchmark (SRB) an
 #### Surface Reconstruction Benchmark (SRB)
 
 The SRB dataset was found in the README of [DiGS: Divergence guided shape implicit neural representation for unoriented point clouds](https://github.com/Chumbyte/DiGS) that SRB can be downloaded from using the provided script [`download_srb.sh`](https://github.com/Chumbyte/DiGS/blob/main/data/scripts/download_srb.sh) that downloads the data from the [Deep Geometric Prior for Surface Reconstruction](https://github.com/fwilliams/deep-geometric-prior) paper. This data is located on [Google Drive](https://drive.google.com/file/d/17Elfc1TTRzIQJhaNu5m7SckBH_mdjYSe/view) is a 1.1GB zip file. The subfolders `scans` and `ground_truth` contain the data used in the paper.
+
+### Training
+The models can now be trained by running
+
+```bash
+python pinc/run.py
+```
 
 ## Notes
 
