@@ -6,6 +6,7 @@ import json
 from enum import StrEnum
 from typing import NamedTuple
 
+import numpy as np
 import pandas as pd
 
 from pinc.data import REPO_ROOT
@@ -38,34 +39,34 @@ class RunTypes(StrEnum):
 
 RUN_IDS = {
     "anchor": {
-        RunTypes.TYPE_1: "2024_02_15_13_02_27",
-        RunTypes.TYPE_2: "2024_02_12_11_31_23_lor_anchor_eps_01",
-        RunTypes.TYPE_3: "7nsgf68t",
-        RunTypes.TYPE_4: "8lcvaqh4",
+        RunTypes.TYPE_1: ["2024_02_15_13_02_27"],
+        RunTypes.TYPE_2: ["2024_02_12_11_31_23_lor_anchor_eps_01"],
+        RunTypes.TYPE_3: ["7nsgf68t"],
+        RunTypes.TYPE_4: ["8lcvaqh4", "xw68upg6", "suobhxom"],
     },
     "daratech": {
-        RunTypes.TYPE_1: "2024_02_12_22_17_49",
-        RunTypes.TYPE_2: "2024_02_13_10_44_11",
-        RunTypes.TYPE_3: "teoj02mm",
-        RunTypes.TYPE_4: "kt67i502",
+        RunTypes.TYPE_1: ["2024_02_12_22_17_49"],
+        RunTypes.TYPE_2: ["2024_02_13_10_44_11"],
+        RunTypes.TYPE_3: ["teoj02mm"],
+        RunTypes.TYPE_4: ["kt67i502", "vd7dkf40", "funmhwh3"],
     },
     "dc": {
-        RunTypes.TYPE_1: "2024_02_14_09_06_06_lor_dc_eps_1",
-        RunTypes.TYPE_2: "2024_02_13_08_51_39_lor_dc_eps_01",
-        RunTypes.TYPE_3: "v0l912vq",
-        RunTypes.TYPE_4: "1o79somx",
+        RunTypes.TYPE_1: ["2024_02_14_09_06_06_lor_dc_eps_1"],
+        RunTypes.TYPE_2: ["2024_02_13_08_51_39_lor_dc_eps_01"],
+        RunTypes.TYPE_3: ["v0l912vq"],
+        RunTypes.TYPE_4: ["1o79somx", "raimbjb8", "nq2dyh10"],
     },
     "gargoyle": {
-        RunTypes.TYPE_1: "2024_02_12_11_27_25",
-        RunTypes.TYPE_2: "2024_02_09_19_17_27",
-        RunTypes.TYPE_3: "ojbs5lgy",
-        RunTypes.TYPE_4: "6jfgejpa",
+        RunTypes.TYPE_1: ["2024_02_12_11_27_25"],
+        RunTypes.TYPE_2: ["2024_02_09_19_17_27"],
+        RunTypes.TYPE_3: ["ojbs5lgy"],
+        RunTypes.TYPE_4: ["6jfgejpa", "j7lwywt2", "mpcpqqo7"],
     },
     "lord_quas": {
-        RunTypes.TYPE_1: "2024_02_14_17_35_11",
-        RunTypes.TYPE_2: "2024_02_13_22_30_18",
-        RunTypes.TYPE_3: "1f5dvyoc",
-        RunTypes.TYPE_4: "lc8cu813",
+        RunTypes.TYPE_1: ["2024_02_14_17_35_11"],
+        RunTypes.TYPE_2: ["2024_02_13_22_30_18"],
+        RunTypes.TYPE_3: ["1f5dvyoc"],
+        RunTypes.TYPE_4: ["lc8cu813", "evqmf9oi", "pdrpsqow"],
     },
 }
 
@@ -134,9 +135,23 @@ def load_run_metrics(run_id: str, file: str, spec: RunTypes) -> Metrics:
 
 
 def add_runs_to_reported_metrics(reported_metrics: dict[str, dict[str, Metrics]]) -> dict[str, dict[str, Metrics]]:
-    for file, run_ids in RUN_IDS.items():
-        for spec, run_id in run_ids.items():
-            reported_metrics[file][spec] = load_run_metrics(run_id, file, spec)
+    for file, file_run_ids in RUN_IDS.items():
+        for spec, spec_run_ids in file_run_ids.items():
+            if len(spec_run_ids) == 1:  # Only one run
+                reported_metrics[file][spec] = load_run_metrics(spec_run_ids[0], file, spec)
+            else:  # Multiple repeated runs
+                spec_metrics: list[Metrics] = []
+                for run_id in spec_run_ids:
+                    try:
+                        spec_metrics.append(load_run_metrics(run_id, file, spec))
+                    except AssertionError as e:  # noqa: PERF203
+                        print(e)
+                print(f"Metrics for {spec}, {file}")
+                f = lambda v: f"{v:>6.4f}"
+                for attribute in Metrics._fields:
+                    values = [getattr(m, attribute) for m in spec_metrics]
+                    value_string = ", ".join(map(f, values))
+                    print(value_string, f"mean: {np.mean(values):.5f}, std: {np.std(values):.5f}")
     return reported_metrics
 
 
