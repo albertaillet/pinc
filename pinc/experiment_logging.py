@@ -17,11 +17,11 @@ def log_loss(losses, step: int) -> None:
     def loss_terms_dict(loss_sdf: Array, loss_terms: Array) -> dict[str, float]:
         loss_grad, loss_G, loss_curl, loss_area = loss_terms
         return {
-            "loss_sdf": float(loss_sdf),
-            "loss_grad": float(loss_grad),
-            "loss_G": float(loss_G),
-            "loss_curl": float(loss_curl),
-            "loss_area": float(loss_area),
+            "loss_sdf": float(jnp.squeeze(loss_sdf)),
+            "loss_grad": float(jnp.squeeze(loss_grad)),
+            "loss_G": float(jnp.squeeze(loss_G)),
+            "loss_curl": float(jnp.squeeze(loss_curl)),
+            "loss_area": float(jnp.squeeze(loss_area)),
         }
 
     loss = float(loss)
