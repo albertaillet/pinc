@@ -41,31 +41,31 @@ RUN_IDS = {
     "anchor": {
         RunTypes.TYPE_1: ["2024_02_15_13_02_27"],
         RunTypes.TYPE_2: ["2024_02_12_11_31_23_lor_anchor_eps_01"],
-        RunTypes.TYPE_3: ["7nsgf68t"],
+        RunTypes.TYPE_3: ["7nsgf68t", "3pzxgbig", "zwohp52r"],
         RunTypes.TYPE_4: ["8lcvaqh4", "xw68upg6", "suobhxom"],
     },
     "daratech": {
         RunTypes.TYPE_1: ["2024_02_12_22_17_49"],
         RunTypes.TYPE_2: ["2024_02_13_10_44_11"],
-        RunTypes.TYPE_3: ["teoj02mm"],
+        RunTypes.TYPE_3: ["teoj02mm", "ggtjf89r", "b5o23l1e"],
         RunTypes.TYPE_4: ["kt67i502", "vd7dkf40", "funmhwh3"],
     },
     "dc": {
         RunTypes.TYPE_1: ["2024_02_14_09_06_06_lor_dc_eps_1"],
         RunTypes.TYPE_2: ["2024_02_13_08_51_39_lor_dc_eps_01"],
-        RunTypes.TYPE_3: ["v0l912vq"],
+        RunTypes.TYPE_3: ["v0l912vq", "4jsncb8b", "dqh60r92"],
         RunTypes.TYPE_4: ["1o79somx", "raimbjb8", "nq2dyh10"],
     },
     "gargoyle": {
         RunTypes.TYPE_1: ["2024_02_12_11_27_25"],
         RunTypes.TYPE_2: ["2024_02_09_19_17_27"],
-        RunTypes.TYPE_3: ["ojbs5lgy"],
+        RunTypes.TYPE_3: ["ojbs5lgy", "q7e5btzg", "ljbi7xiv"],
         RunTypes.TYPE_4: ["6jfgejpa", "j7lwywt2", "mpcpqqo7"],
     },
     "lord_quas": {
         RunTypes.TYPE_1: ["2024_02_14_17_35_11"],
         RunTypes.TYPE_2: ["2024_02_13_22_30_18"],
-        RunTypes.TYPE_3: ["1f5dvyoc"],
+        RunTypes.TYPE_3: ["1f5dvyoc", "s3z11lkx", "wzpaoy41"],
         RunTypes.TYPE_4: ["lc8cu813", "evqmf9oi", "pdrpsqow"],
     },
 }
