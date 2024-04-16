@@ -8,15 +8,26 @@ from typing import NamedTuple
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 from pinc.data import REPO_ROOT
 
 
+class Metric(NamedTuple):
+    value: float
+    uncertainty: float | None
+
+    def __str__(self) -> str:
+        if self.uncertainty is None:
+            return f"{self.value:.2f}"
+        return f"{self.value:.2f} ± {self.uncertainty:.2f}"
+
+
 class Metrics(NamedTuple):
-    gt_chamfer: float
-    gt_hausdorff: float
-    scan_directed_chamfer: float
-    scan_directed_hausdorff: float
+    gt_chamfer: Metric
+    gt_hausdorff: Metric
+    scan_directed_chamfer: Metric
+    scan_directed_hausdorff: Metric
 
 
 PAPER_SRB_FILES = ["anchor", "daratech", "dc", "gargoyle", "lord_quas"]
@@ -78,7 +89,9 @@ def parse_table(table: str, columns: list[str]) -> dict[str, dict[str, Metrics]]
         chunks = line.split(" ")
         key = chunks[0]
         values = list(map(float, chunks[1:]))
-        metric_results[key] = {f: Metrics(*values[i : i + 4]) for f, i in zip(columns, range(0, 20, 4))}
+        metric_results[key] = {}
+        for f, i in zip(columns, range(0, 20, 4)):
+            metric_results[key][f] = Metrics(*[Metric(v, None) for v in values[i : i + 4]])
 
     # invert the dictionary to have the file names as the keys
     return {file: {method: metric_results[method][file] for method in metric_results} for file in columns}
@@ -127,11 +140,23 @@ def load_run_metrics(run_id: str, file: str, spec: RunTypes) -> Metrics:
     with metric_path.open("r") as f:
         metric_data = json.load(f)
     return Metrics(
-        gt_chamfer=metric_data["distances"]["ground_truth"]["chamfer"],
-        gt_hausdorff=metric_data["distances"]["ground_truth"]["hausdorff"],
-        scan_directed_chamfer=metric_data["distances"]["scan"]["directed_chamfer"],
-        scan_directed_hausdorff=metric_data["distances"]["scan"]["directed_hausdorff"],
+        gt_chamfer=Metric(metric_data["distances"]["ground_truth"]["chamfer"], None),
+        gt_hausdorff=Metric(metric_data["distances"]["ground_truth"]["hausdorff"], None),
+        scan_directed_chamfer=Metric(metric_data["distances"]["scan"]["directed_chamfer"], None),
+        scan_directed_hausdorff=Metric(metric_data["distances"]["scan"]["directed_hausdorff"], None),
     )
+
+
+def load_uncertainty_metrics(spec_run_ids: list[str], file: str, spec: RunTypes) -> Metrics:
+    spec_metrics = [load_run_metrics(run_id, file, spec) for run_id in spec_run_ids]
+    uncertainty_metrics = {}
+    for attribute in Metrics._fields:
+        values = [getattr(m, attribute).value for m in spec_metrics]
+        mean = np.mean(values)
+        std = np.std(values)
+        t_student_interval = stats.t.ppf(0.975, len(values)) * std
+        uncertainty_metrics[attribute] = Metric(float(mean), float(t_student_interval))
+    return Metrics(**uncertainty_metrics)
 
 
 def add_runs_to_reported_metrics(reported_metrics: dict[str, dict[str, Metrics]]) -> dict[str, dict[str, Metrics]]:
@@ -140,18 +165,8 @@ def add_runs_to_reported_metrics(reported_metrics: dict[str, dict[str, Metrics]]
             if len(spec_run_ids) == 1:  # Only one run
                 reported_metrics[file][spec] = load_run_metrics(spec_run_ids[0], file, spec)
             else:  # Multiple repeated runs
-                spec_metrics: list[Metrics] = []
-                for run_id in spec_run_ids:
-                    try:
-                        spec_metrics.append(load_run_metrics(run_id, file, spec))
-                    except AssertionError as e:  # noqa: PERF203
-                        print(e)
-                print(f"Metrics for {spec}, {file}")
-                f = lambda v: f"{v:>6.4f}"
-                for attribute in Metrics._fields:
-                    values = [getattr(m, attribute) for m in spec_metrics]
-                    value_string = ", ".join(map(f, values))
-                    print(value_string, f"mean: {np.mean(values):.5f}, std: {np.std(values):.5f}")
+                reported_metrics[file][spec] = load_uncertainty_metrics(spec_run_ids, file, spec)
+
     return reported_metrics
 
 
@@ -163,10 +178,10 @@ def flatten_metrics_for_df(metrics: dict[str, dict[str, Metrics]]) -> dict[str, 
         file_name = file.replace("_", " ").capitalize()
         for spec, metric in specs.items():
             for compared_point_cloud, distance_name, value in [
-                ("GT", "chamfer", metric.gt_chamfer),
-                ("GT", "hausdorff", metric.gt_hausdorff),
-                ("Scan", "directed_chamfer", metric.scan_directed_chamfer),
-                ("Scan", "directed_hausdorff", metric.scan_directed_hausdorff),
+                ("GT", "chamfer", str(metric.gt_chamfer)),
+                ("GT", "hausdorff", str(metric.gt_hausdorff)),
+                ("Scan", "directed_chamfer", str(metric.scan_directed_chamfer)),
+                ("Scan", "directed_hausdorff", str(metric.scan_directed_hausdorff)),
             ]:
                 tuple_key = (file_name, compared_point_cloud, distance_name)
                 if tuple_key not in flat_metrics:
