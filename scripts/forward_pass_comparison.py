@@ -195,8 +195,8 @@ torch_model = ImplicitNet_PINC(dims, skip_in=skip_layers)
 
 # %% Extract the params from the model
 params = []
-for layer in range(torch_model.num_layers - 1):
-    layer = getattr(torch_model, "lin" + str(layer))
+for layer_i in range(torch_model.num_layers - 1):
+    layer = getattr(torch_model, "lin" + str(layer_i))
     params.append((layer.weight.detach().numpy(), layer.bias.detach().numpy()))
 
 # %% Create a dummy input
@@ -281,5 +281,26 @@ assert np.allclose(loss_terms_sum[0], torch_losses_cpu["grad_loss"])
 assert np.allclose(loss_terms_sum[1], torch_losses_cpu["G_matching"])
 assert np.allclose(loss_terms_sum[2], torch_losses_cpu["curl_loss"])
 assert np.allclose(loss_terms_sum[3], torch_losses_cpu["area_loss"])
+
+# %%
+jax_grads, _ = jax.grad(batch_loss, has_aux=True)(params, boundary_points, sample_points)
+
+# %%
+torch_losses = torch_model.compute_loss(torch_boundary_points, torch_sample_points, epsilon, loss_weights)
+torch_losses["loss"].backward()
+
+# %%
+torch_grads = []
+for layer_i in range(torch_model.num_layers - 1):
+    layer = getattr(torch_model, "lin" + str(layer_i))
+    torch_grads.append((layer.weight.grad.numpy(), layer.bias.grad.numpy()))
+
+# %%
+atol = 1e-6
+for layer_i in range(torch_model.num_layers - 1):
+    jw, jb = jax_grads[layer_i]
+    tw, tb = torch_grads[layer_i]
+    assert np.allclose(jw, tw, atol=atol)
+    assert np.allclose(jb, tb, atol=atol)
 
 # %%

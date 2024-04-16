@@ -21,11 +21,10 @@ def step(
     static: StaticLossArgs,
 ) -> tuple[Params, optax.OptState, Losses]:
     """Compute loss and update parameters"""
-    compute_loss_with_static = partial(compute_loss, static=static)
 
     def batch_loss(params: Params, boundary_points: Array, sample_points: Array) -> Losses:
-        loss_sdf, boundary_loss_terms = vmap(partial(compute_loss_with_static, params))(boundary_points)
-        _, sample_loss_terms = vmap(partial(compute_loss_with_static, params))(sample_points)
+        loss_sdf, boundary_loss_terms = vmap(partial(compute_loss, params, static=static))(boundary_points)
+        _, sample_loss_terms = vmap(partial(compute_loss, params, static=static))(sample_points)
         loss_terms_sum = (boundary_loss_terms.sum() + sample_loss_terms.sum()) / (len(boundary_points) + len(sample_points))
         loss_sdf_mean = loss_sdf.mean()
         return loss_sdf_mean + loss_terms_sum, (loss_sdf_mean, boundary_loss_terms.mean(axis=0), sample_loss_terms.mean(axis=0))
