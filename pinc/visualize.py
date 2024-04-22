@@ -33,7 +33,6 @@ def plot_mesh(points, triangles, **kwargs) -> go.Mesh3d:
         i=triangles[:, 0],
         j=triangles[:, 1],
         k=triangles[:, 2],
-        opacity=0.5,
         **kwargs,
     )
 

@@ -106,9 +106,13 @@ CAMERAS = {
     ),
 }
 
+LIGHTPOSITION = {
+    "gargoyle": dict(x=1, y=-1, z=-1),
+}
 
-def make_and_save_figure(trace, camera: dict[str, dict], name: str):
-    fig = go.Figure(
+
+def make_figure(trace, camera: dict[str, dict]) -> go.Figure:
+    return go.Figure(
         data=[trace],
         layout=go.Layout(
             scene=go.layout.Scene(
@@ -119,6 +123,9 @@ def make_and_save_figure(trace, camera: dict[str, dict], name: str):
             ),
         ),
     )
+
+
+def save_figure(fig: go.Figure, name: str):
     print(f"Writing {name}")
     fig.write_image(REPO_ROOT / f"tmp/figs/{name}", scale=1, width=1080, height=1080)
     print("Done writing file")
@@ -127,6 +134,7 @@ def make_and_save_figure(trace, camera: dict[str, dict], name: str):
 def main(file: str, color: str) -> None:
     assert file in PAPER_SRB_FILES, f"Unknown file: {file}"
     camera = CAMERAS[file]
+    lightposition = LIGHTPOSITION.get(file)
     scan_mesh: trimesh.PointCloud = trimesh.load(REPO_ROOT / "data" / "scans" / f"{file}.ply")  # type: ignore
 
     points, max_coord, center_point = process_points(scan_mesh.vertices)
@@ -139,12 +147,14 @@ def main(file: str, color: str) -> None:
     )
 
     trace = plot_points(points, marker=marker)
-    make_and_save_figure(trace, camera, f"{file}_scan.png")
+    fig = make_figure(trace, camera)
+    save_figure(fig, f"{file}_scan.png")
 
     for type_index, spec in enumerate(RunTypes, 1):
         mesh = load_mesh(RUN_IDS[file][spec], spec, center_point, max_coord)
-        trace = plot_trimesh(mesh, color=color)
-        make_and_save_figure(trace, camera, f"{file}_{type_index}.png")
+        trace = plot_trimesh(mesh, color=color, opacity=0.5, lightposition=lightposition)
+        fig = make_figure(trace, camera)
+        save_figure(fig, f"{file}_{type_index}.png")
 
 
 COLORS = ["lightblue", "lightgreen", "lightcoral", "lightgray", "orange"]
