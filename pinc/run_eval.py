@@ -25,6 +25,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("-nes", "--n-eval-samples", type=int, default=int(10e6), help="Number of samples for evaluation.")
     parser.add_argument("-s", "--seed", type=int, default=0, help="Random seed for sampling.")
     parser.add_argument("-nw", "--n-workers", type=int, default=5, help="Number of workers for distance computation.")
+    parser.add_argument("-sf", "--suffix", type=str, default=None, help="Suffix to file name.")
     return parser.parse_args()
 
 
@@ -121,7 +122,11 @@ def main(eval_args: argparse.Namespace) -> None:
         else:
             metrics = {"normal_consistency": normal_consistency}
 
-        with (metrics_path / f"{model_path.stem}_metrics.json").open("w") as f:
+        if eval_args.suffix is None:
+            json_file_name = f"{model_path.stem}_metrics.json"
+        else:
+            json_file_name = f"{model_path.stem}_metrics_{eval_args.suffix}.json"
+        with (metrics_path / json_file_name).open("w") as f:
             json.dump(metrics, f, indent=2)
 
     print("Evaluation done!")
