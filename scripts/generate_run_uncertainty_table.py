@@ -20,7 +20,7 @@ class Metric(NamedTuple):
     def __str__(self) -> str:
         if self.uncertainty is None:
             return f"{self.value:.2f}"
-        return f"{self.value:.2f} ± {self.uncertainty:.2f}"
+        return f"{self.value:.3f} ± {self.uncertainty:.3f}"
 
 
 class Metrics(NamedTuple):
@@ -28,6 +28,7 @@ class Metrics(NamedTuple):
     gt_hausdorff: Metric
     scan_directed_chamfer: Metric
     scan_directed_hausdorff: Metric
+    normal_consistency: None | Metric
 
 
 PAPER_SRB_FILES = ["anchor", "daratech", "dc", "gargoyle", "lord_quas"]
@@ -144,6 +145,7 @@ def load_run_metrics(run_id: str, file: str, spec: RunTypes) -> Metrics:
         gt_hausdorff=Metric(metric_data["distances"]["ground_truth"]["hausdorff"], None),
         scan_directed_chamfer=Metric(metric_data["distances"]["scan"]["directed_chamfer"], None),
         scan_directed_hausdorff=Metric(metric_data["distances"]["scan"]["directed_hausdorff"], None),
+        normal_consistency=Metric(metric_data["normal_consistency"], None) if "normal_consistency" in metric_data else None,
     )
 
 
@@ -160,13 +162,12 @@ def load_uncertainty_metrics(spec_run_ids: list[str], file: str, spec: RunTypes)
 
 
 def add_runs_to_reported_metrics(reported_metrics: dict[str, dict[str, Metrics]]) -> dict[str, dict[str, Metrics]]:
-    for file, file_run_ids in RUN_IDS.items():
-        for spec, spec_run_ids in file_run_ids.items():
+    for file, run_ids in RUN_IDS.items():
+        for spec, spec_run_ids in run_ids.items():
             if len(spec_run_ids) == 1:  # Only one run
-                reported_metrics[file][spec] = load_run_metrics(spec_run_ids[0], file, spec)
+                pass  # reported_metrics[file][spec] = load_run_metrics(spec_run_ids[0], file, spec)
             else:  # Multiple repeated runs
                 reported_metrics[file][spec] = load_uncertainty_metrics(spec_run_ids, file, spec)
-
     return reported_metrics
 
 
@@ -182,16 +183,18 @@ def flatten_metrics_for_df(metrics: dict[str, dict[str, Metrics]]) -> dict[str, 
                 ("GT", "hausdorff", str(metric.gt_hausdorff)),
                 ("Scan", "directed_chamfer", str(metric.scan_directed_chamfer)),
                 ("Scan", "directed_hausdorff", str(metric.scan_directed_hausdorff)),
+                ("", "Normal Consistency", str(metric.normal_consistency)),
             ]:
-                tuple_key = (file_name, compared_point_cloud, distance_name)
-                if tuple_key not in flat_metrics:
-                    flat_metrics[tuple_key] = {}
-                flat_metrics[tuple_key][spec] = value
+                col_key = (compared_point_cloud, distance_name)
+                row_key = (file_name, spec)
+                if col_key not in flat_metrics:
+                    flat_metrics[col_key] = {}
+                flat_metrics[col_key][row_key] = value
     return flat_metrics
 
 
 if __name__ == "__main__":
-    reported_metrics = parse_table(PAPER_TABLE, PAPER_SRB_FILES)
+    reported_metrics = {file: {} for file in PAPER_SRB_FILES}  # parse_table(PAPER_TABLE, PAPER_SRB_FILES)
 
     reported_metrics = add_runs_to_reported_metrics(reported_metrics)
 
@@ -200,7 +203,7 @@ if __name__ == "__main__":
     df = pd.DataFrame(flat_metrics)
 
     n_top = len(df.columns.levels[0])  # type: ignore
-    column_format = "l" + "|".join(["cccc"] * n_top)
+    column_format = "llcc|cc|c"
 
     latex_string = (
         df.to_latex(float_format="%.2f", multirow=True, column_format=column_format, multicolumn_format="c")
@@ -213,5 +216,6 @@ if __name__ == "__main__":
         .replace(r"\bottomrule", r"\hline")
         .replace("NaN", " ")
         .replace("epsilon", r"\varepsilon")
+        .replace("$[$Re$]$ PINC ", "")
     )
     print(latex_string)
