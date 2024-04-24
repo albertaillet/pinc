@@ -53,6 +53,7 @@ RUN_IDS = {
 ALL_RUN_IDS = [
     run_id for file in PAPER_SRB_FILES for run_type in [RunTypes.TYPE_3, RunTypes.TYPE_4] for run_id in RUN_IDS[file][run_type]
 ]
+NUM_EVALUATIONS = 15
 
 
 def eval_all_runs(start_date: datetime.datetime) -> None:
@@ -68,10 +69,14 @@ def eval_all_runs(start_date: datetime.datetime) -> None:
             print(f"Skipping {run_dir}, run too old")
             continue
         metrics_dir = run_dir / "files/metrics"
-        if metrics_dir.exists() and len(list(metrics_dir.glob("*.json"))) > 1:
-            print(f"Skipping {run_dir}, {len(list(metrics_dir.glob('*.json')))}")
+        if not metrics_dir.exists():
+            print(f"Skipping {run_dir}, no metrics dir")
+        n_metrics_files = len(list(metrics_dir.glob("*.json")))
+        if n_metrics_files == NUM_EVALUATIONS:
+            print(f"Skipping {run_dir}, {n_metrics_files}")
             continue
-        for i in range(1, 5):
+        print(f"Run dir {run_dir}, {n_metrics_files}")
+        for i in range(n_metrics_files + 1, NUM_EVALUATIONS):
             command = [
                 "python",
                 str(eval_script),
