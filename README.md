@@ -93,17 +93,3 @@ The layer with the skip connection in the model is divided by sqrt(2) in the ori
 if layer in self.skip_in:
     output = torch.cat([output, input], -1) / np.sqrt(2)
 ```
-
-
-
-#### Geometric initialization is slightly different
-
-
-### Division by sqrt(2) in the skip connection
-
-The layer with the skip connection in the model is divided by sqrt(2) in the original code. This is not mentioned in the paper.
-
-```python
-if layer in self.skip_in:
-    output = torch.cat([output, input], -1) / np.sqrt(2)
-```
